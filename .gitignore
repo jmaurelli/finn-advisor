@@ -1,0 +1,11 @@
+# HumanLayer cloud-synced task artifacts
+.humanlayer/tasks/
+
+# Machine-local HumanLayer configuration
+.humanlayer/workspace.local.json
+
+# Local secrets
+.env
+.env.*
+!.env.example
+

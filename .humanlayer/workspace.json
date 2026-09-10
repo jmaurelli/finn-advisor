@@ -1,0 +1,12 @@
+{
+  "pathTemplate": "/home/humanlayer/workspaces/{{ TASKSLUG }}/{{ REPOBASENAME }}",
+  "branchTemplate": "{{ TASKSLUG }}",
+  "sourceRef": "origin/main",
+  "repos": [
+    {
+      "localPath": ".",
+      "description": "Finn Advisor application",
+      "primary": true
+    }
+  ]
+}
