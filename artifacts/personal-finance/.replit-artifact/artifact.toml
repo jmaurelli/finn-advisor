@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Personal Finance"
+description = "A responsive personal finance workspace for reviewing spending, correcting transaction categories, managing monthly budgets, and inspecting CSV imports with realistic sample data."
+version = "1.0.0"
+id = "artifacts/personal-finance"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25433
+
+[services.development]
+run = "pnpm --filter @workspace/personal-finance run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/personal-finance", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/personal-finance/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25433"
+BASE_PATH = "/"
