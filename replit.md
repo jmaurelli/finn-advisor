@@ -9,7 +9,8 @@ A responsive single-user personal finance workspace prototype for reviewing spen
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `DATABASE_URL` applies only to the optional database scaffold; the frontend preview requires no database.
+- The Express/PostgreSQL scaffold is not an approved backend architecture. HumanLayer owns that decision. See `docs/HUMANLAYER-HANDOFF.md`.
 
 ## Stack
 
@@ -23,7 +24,7 @@ A responsive single-user personal finance workspace prototype for reviewing spen
 ## Where things live
 
 - `artifacts/personal-finance/` — the deployable React + Vite frontend
-- `artifacts/personal-finance/src/data/` — replaceable local domain models, sample data, and mock data-access functions
+- `artifacts/personal-finance/src/domain/` — replaceable local domain models, sample data, and mock data-access functions
 - `artifacts/personal-finance/src/pages/` — route-level product screens
 - `artifacts/personal-finance/src/components/` — reusable UI components
 - `artifacts/personal-finance/README.md` — prototype scope, assumptions, and backend integration seam
