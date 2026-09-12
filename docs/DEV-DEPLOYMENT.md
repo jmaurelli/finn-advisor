@@ -36,6 +36,16 @@ ssh -F ~/.ssh/config -N -L 4174:127.0.0.1:4173 dev
 
 Then open `http://127.0.0.1:4174`. Stop the preview and tunnel to roll back. The explicit SSH config bypasses a currently misowned system SSH include on the workstation without editing system configuration.
 
-On 2026-09-12 server02 was reachable and had no listener on 4173. Access as admin01 succeeded, but `sudo -n -u humanlayer` required interactive authentication. **No deployment or server-side build has been performed.** An authenticated administrator session or HumanLayer execution is needed to perform the above steps under the correct account. No new web firewall port has been opened.
+On 2026-09-12 the administrator installed `/etc/sudoers.d/90-admin01-humanlayer`, allowing `admin01 ALL=(humanlayer) NOPASSWD: ALL`. Passwordless execution as humanlayer was verified. Root sudo still requires authentication.
+
+The review is deployed at `/home/humanlayer/workspaces/replit-gui-review/finn-advisor`. Frozen install, full workspace typecheck/build, and 16 browser checks passed on server02 via the tunnel. The humanlayer user service `finn-advisor-gui-preview.service` is enabled and active, bound to `127.0.0.1:4173`. Restart and deep-link serving passed; reboot was not tested. The existing lingering user manager enables startup without login. No firewall change was made.
+
+The workstation tunnel exposes the preview at `http://127.0.0.1:4174` while the tunnel process is running. To manage the service:
+
+```sh
+sudo -n -u humanlayer -H env XDG_RUNTIME_DIR=/run/user/1001 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1001/bus systemctl --user status finn-advisor-gui-preview.service
+```
+
+Replace `status` with `restart` to restart, or `disable --now` to stop and disable the preview. The canonical repository was left untouched. Review changes have not been pushed to GitHub.
 
 After preview acceptance, HumanLayer should define the durable service, health endpoint, private LAN/Tailscale exposure, TLS, log handling, update/rollback, and reboot validation. Production remains gated.

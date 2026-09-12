@@ -13,7 +13,7 @@ Evidence is in `review-output/browser-checks.json`, `desktop-overview.png`, and 
 ## Remaining gaps
 
 - A clean upstream install fails because its lockfile is truncated. The regenerated lockfile changes dependency resolution; preserve and review it before sharing deployment instructions based on it.
-- Live server02 deployment/build is unverified because switching to the required humanlayer account needs administrator authentication.
+- Server02 deployment is now verified: frozen install, full typecheck/build, 16 browser checks, and service restart passed under humanlayer. Evidence: `review-output/server02-*`. Reboot and owner visual acceptance remain untested.
 - UI state resets on refresh. No persistence, real CSV import/review, export, authentication, or financial API exists.
 - Period changes do not filter data; settings do not apply; rule changes do not categorize transactions. Several displayed counts are hardcoded.
 - US/Eastern date rendering moves date-only values back one day. Monetary signs/types, refunds, and payroll counts require an approved financial contract.
