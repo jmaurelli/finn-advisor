@@ -1,0 +1,69 @@
+{
+  "checks": [
+    {
+      "name": "direct route transactions",
+      "ok": true
+    },
+    {
+      "name": "direct route budgets",
+      "ok": true
+    },
+    {
+      "name": "direct route categories",
+      "ok": true
+    },
+    {
+      "name": "direct route imports",
+      "ok": true
+    },
+    {
+      "name": "direct route settings",
+      "ok": true
+    },
+    {
+      "name": "merchant search",
+      "ok": true
+    },
+    {
+      "name": "uncategorized filter",
+      "ok": true
+    },
+    {
+      "name": "manual correction updates list",
+      "ok": true
+    },
+    {
+      "name": "create category",
+      "ok": true
+    },
+    {
+      "name": "create rule",
+      "ok": true
+    },
+    {
+      "name": "disable rule",
+      "ok": true
+    },
+    {
+      "name": "edit budget",
+      "ok": true
+    },
+    {
+      "name": "refresh resets prototype edits",
+      "ok": true
+    },
+    {
+      "name": "mobile no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "mobile navigation",
+      "ok": true
+    },
+    {
+      "name": "no runtime errors",
+      "ok": true
+    }
+  ],
+  "errors": []
+}
