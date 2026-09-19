@@ -604,9 +604,24 @@ importers:
 
   lib/api-spec:
     devDependencies:
+      '@redocly/cli':
+        specifier: 2.53.2
+        version: 2.53.2
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
+      ajv-formats:
+        specifier: 3.0.1
+        version: 3.0.1(ajv@8.20.0)
       orval:
         specifier: ^8.30.0
         version: 8.31.0(@tanstack/react-query@5.102.8(react@19.1.0))(prettier@3.9.6)(typescript@5.9.3)(zod@3.25.76)
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.13
+      yaml:
+        specifier: 2.9.0
+        version: 2.9.0
 
   lib/api-zod:
     dependencies:
@@ -1522,6 +1537,11 @@ packages:
   '@radix-ui/rect@1.1.3':
     resolution: {integrity: sha512-JtyZR+mqgBibTo8xea3B6ZRmzZiM/YeVBtUkas6zMuXjAlfIFIW2FgqeM9eLyvEaYX66vr6DJMK+4U6LV0KhNw==}
 
+  '@redocly/cli@2.53.2':
+    resolution: {integrity: sha512-ay2jLuWvKssw1Au1A0fyDR//plK83GxV80TfA08iB9W/5AVosgB+WFv0JzglU4PiXf1fQjtsoXhZwZLx28VGrw==}
+    engines: {node: '>=22.12.0 || >=20.19.0 <21.0.0', npm: '>=10'}
+    hasBin: true
+
   '@replit/connectors-sdk@0.4.3':
     resolution: {integrity: sha512-7XoaRty/O6JF161UkVBI8UewZ96XCNNN1kRvT9Q41IRH3xr+6ImylvXtirIghydDd2FCQvIkY4HQscOOr45otA==}
 
@@ -1767,6 +1787,11 @@ packages:
 
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
+    peerDependencies:
+      ajv: ^8.0.0
+    peerDependenciesMeta:
+      ajv:
+        optional: true
 
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
@@ -4140,6 +4165,8 @@ snapshots:
 
   '@radix-ui/rect@1.1.3': {}
 
+  '@redocly/cli@2.53.2': {}
+
   '@replit/connectors-sdk@0.4.3': {}
 
   '@replit/vite-plugin-cartographer@0.5.21':
@@ -4187,7 +4214,7 @@ snapshots:
       '@scalar/openapi-upgrader': 0.2.15
       ajv: 8.20.0
       ajv-draft-04: 1.0.0(ajv@8.20.0)
-      ajv-formats: 3.0.1
+      ajv-formats: 3.0.1(ajv@8.20.0)
       jsonpointer: 5.0.1
       leven: 4.1.0
       yaml: 2.9.0
@@ -4405,8 +4432,8 @@ snapshots:
     optionalDependencies:
       ajv: 8.20.0
 
-  ajv-formats@3.0.1:
-    dependencies:
+  ajv-formats@3.0.1(ajv@8.20.0):
+    optionalDependencies:
       ajv: 8.20.0
 
   ajv@8.20.0:

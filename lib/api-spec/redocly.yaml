@@ -1,0 +1,10 @@
+# Lint configuration for the Money Desk contract (TDD section 8).
+extends:
+  - recommended
+rules:
+  # Shared synthetic fixtures live in components/examples and are reused
+  # through YAML anchors, which the linter cannot see as references.
+  no-unused-components: off
+  # healthz, readyz and getSession have no client-error cases by design;
+  # their error examples are 503 responses.
+  operation-4xx-response: off
