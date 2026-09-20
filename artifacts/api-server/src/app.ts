@@ -13,9 +13,11 @@ import {
   requireSameOrigin,
 } from "./middlewares/context.js";
 import { attachSession } from "./middlewares/session.js";
+import { accountRoutes } from "./routes/accounts.js";
 import { healthRoutes } from "./routes/health.js";
 import { preferencesRoutes } from "./routes/preferences.js";
 import { sessionRoutes } from "./routes/session.js";
+import { summaryRoutes } from "./routes/summary.js";
 import { accessLog, logger } from "./lib/logger.js";
 
 export function createApp(deps: AppDependencies): Express {
@@ -42,6 +44,8 @@ export function createApp(deps: AppDependencies): Express {
   api.use(healthRoutes(deps));
   api.use(sessionRoutes(deps));
   api.use(preferencesRoutes(deps));
+  api.use(accountRoutes(deps));
+  api.use(summaryRoutes(deps));
 
   // Anything unmatched under /api is a problem document, never Express's HTML.
   api.use((_req: Request, res: Response, next: NextFunction) => {

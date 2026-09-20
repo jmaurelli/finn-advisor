@@ -14,6 +14,12 @@ export type ProblemCode =
   | "origin_rejected"
   | "csrf_invalid"
   | "not_found"
+  | "client_id_conflict"
+  | "reactivation_required"
+  | "account_in_use"
+  | "active_transactions_before_start"
+  | "category_protected"
+  | "category_in_use"
   | "version_mismatch"
   | "precondition_required"
   | "validation_failed"
@@ -30,12 +36,32 @@ export interface FieldError {
   message: string;
 }
 
+/**
+ * Why a command was refused, named concretely: "6 transactions and 1
+ * checkpoint", not "this account is in use". Up to 20 example ids per kind,
+ * so a large history does not turn an error into a data dump.
+ */
+export interface BlockingReference {
+  kind:
+    | "transaction"
+    | "import"
+    | "checkpoint"
+    | "rule"
+    | "transfer_leg"
+    | "source_identity"
+    | "budget"
+    | "import_row";
+  count: number;
+  ids: string[];
+}
+
 export interface ProblemOptions {
   status: number;
   code: ProblemCode;
   title: string;
   detail: string;
   fieldErrors?: FieldError[];
+  blocking?: BlockingReference[];
   currentVersion?: string;
   retryAfterSeconds?: number;
 }
@@ -64,6 +90,9 @@ export function sendProblem(req: Request, res: Response, options: ProblemOptions
   };
   if (options.fieldErrors !== undefined && options.fieldErrors.length > 0) {
     body["fieldErrors"] = options.fieldErrors.slice(0, 50);
+  }
+  if (options.blocking !== undefined && options.blocking.length > 0) {
+    body["blocking"] = options.blocking.slice(0, 20);
   }
   if (options.currentVersion !== undefined) body["currentVersion"] = options.currentVersion;
   if (options.retryAfterSeconds !== undefined) {

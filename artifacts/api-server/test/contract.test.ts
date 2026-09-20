@@ -15,6 +15,7 @@ import YAML from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { startTestServer, TEST_PASSWORD, type TestResponse, type TestServer } from "./harness.js";
+import { createAccount, postTransaction, uuid } from "./finance-harness.js";
 
 const specPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -57,6 +58,131 @@ function expectProblem(response: TestResponse, code: string): void {
   validateAgainst("Problem", response.body);
   expect((response.body as { code: string }).code).toBe(code);
 }
+
+describe("finance responses match the contract", () => {
+  it("accounts, balances, baselines, checkpoints and the summary", async () => {
+    await api.login();
+
+    const { id, etag, response } = await createAccount(api);
+    validateAgainst("AccountResult", response.body);
+    validateAgainst("AccountList", (await api.request("/api/accounts")).body);
+    validateAgainst("Account", (await api.request(`/api/accounts/${id}`)).body);
+
+    postTransaction(api.db, { accountId: id, postedDate: "2026-04-02", amountMinor: "-8000" });
+    validateAgainst(
+      "AccountBalance",
+      (await api.request(`/api/accounts/${id}/balance?asOf=2026-04-30`)).body,
+    );
+    // The uncovered shape is a different branch of the schema: balance null.
+    validateAgainst(
+      "AccountBalance",
+      (await api.request(`/api/accounts/${id}/balance?asOf=2020-01-01`)).body,
+    );
+
+    const checkpoint = await api.request(`/api/accounts/${id}/checkpoints`, {
+      method: "POST",
+      body: {
+        id: uuid(1, "70000000"),
+        closingDate: "2026-04-30",
+        statementBalance: { amountMinor: "117000", currency: "USD" },
+      },
+    });
+    validateAgainst("CheckpointResult", checkpoint.body);
+    validateAgainst("CheckpointList", (await api.request(`/api/accounts/${id}/checkpoints`)).body);
+    validateAgainst(
+      "CheckpointHistory",
+      (await api.request(`/api/accounts/${id}/checkpoints/${uuid(1, "70000000")}/history`)).body,
+    );
+
+    api.clock.advance(60_000);
+    validateAgainst(
+      "CheckpointResult",
+      (
+        await api.request(`/api/accounts/${id}/checkpoints/${uuid(1, "70000000")}/recheck`, {
+          method: "POST",
+          headers: { "if-match": '"1"' },
+        })
+      ).body,
+    );
+
+    validateAgainst(
+      "BaselineChangeResult",
+      (
+        await api.request(`/api/accounts/${id}/baseline`, {
+          method: "POST",
+          headers: { "if-match": etag },
+          body: {
+            mode: "correct_opening_balance",
+            openingBalance: { amountMinor: "130000", currency: "USD" },
+          },
+        })
+      ).body,
+    );
+
+    validateAgainst("MonthSummary", (await api.request("/api/summary?month=2026-04")).body);
+    validateAgainst("MonthSummary", (await api.request("/api/summary?month=2026-05")).body);
+  });
+
+  it("every finance refusal is a valid problem document", async () => {
+    await api.login();
+    const { id, etag } = await createAccount(api);
+
+    expectProblem(
+      await api.request(`/api/accounts/${uuid(99)}`),
+      "not_found",
+    );
+    expectProblem(
+      (await createAccount(api, { displayName: "Different" })).response,
+      "client_id_conflict",
+    );
+    expectProblem(
+      await api.request(`/api/accounts/${id}`, {
+        method: "PATCH",
+        body: { displayName: "No version" },
+      }),
+      "precondition_required",
+    );
+    expectProblem(
+      await api.request(`/api/accounts/${id}`, {
+        method: "PATCH",
+        headers: { "if-match": '"42"' },
+        body: { displayName: "Stale" },
+      }),
+      "version_mismatch",
+    );
+
+    postTransaction(api.db, { accountId: id, postedDate: "2026-04-02", amountMinor: "-8000" });
+    expectProblem(
+      await api.request(`/api/accounts/${id}`, { method: "DELETE", headers: { "if-match": etag } }),
+      "account_in_use",
+    );
+    expectProblem(
+      await api.request(`/api/accounts/${id}/baseline`, {
+        method: "POST",
+        headers: { "if-match": etag },
+        body: {
+          mode: "move_start_later",
+          trackingStartDate: "2026-04-20",
+          openingBalance: { amountMinor: "1", currency: "USD" },
+        },
+      }),
+      "active_transactions_before_start",
+    );
+
+    await api.request(`/api/accounts/${id}/archive`, {
+      method: "POST",
+      headers: { "if-match": etag },
+    });
+    expectProblem(
+      await api.request(`/api/accounts/${id}`, {
+        method: "PATCH",
+        headers: { "if-match": '"2"' },
+        body: { displayName: "While archived" },
+      }),
+      "reactivation_required",
+    );
+  });
+});
 
 describe("responses match the contract", () => {
   it("healthz, readyz and the signed-out session", async () => {

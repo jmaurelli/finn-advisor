@@ -31,6 +31,25 @@ function scratchMigrations(): string {
   return dir;
 }
 
+/**
+ * The next free migration numbers. Synthetic migrations in these tests used to
+ * hard-code 0002; that silently became a duplicate the moment a real 0002
+ * shipped, so the slot is computed from what is actually on disk.
+ */
+const SHIPPED = loadMigrations().length;
+const SLOT_1 = String(SHIPPED + 1).padStart(4, "0");
+const SLOT_2 = String(SHIPPED + 2).padStart(4, "0");
+const VERSION_1 = SHIPPED + 1;
+const VERSION_2 = SHIPPED + 2;
+
+/** Every object definition in the database, in a stable order. */
+function schemaText(db: TemporaryLedger["db"]): string[] {
+  const rows = db
+    .prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name")
+    .all() as { type: string; name: string; sql: string | null }[];
+  return rows.map((row) => `${row.type} ${row.name}: ${row.sql ?? ""}`);
+}
+
 function tableNames(db: TemporaryLedger["db"]): string[] {
   const rows = db
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
@@ -39,25 +58,51 @@ function tableNames(db: TemporaryLedger["db"]): string[] {
 }
 
 describe("migration runner", () => {
-  it("applies the foundation migration and records it", () => {
+  it("applies every shipped migration and records each one", () => {
     ledger = createTemporaryLedger({ migrated: false });
     const { db } = ledger;
 
     const result = migrate(db);
 
-    expect(result.appliedNow).toEqual(["0001_foundation.sql"]);
+    expect(result.appliedNow).toEqual(["0001_foundation.sql", "0002_accounts.sql"]);
     expect(result.schemaVersion).toBe(EXPECTED_SCHEMA_VERSION);
     expect(tableNames(db)).toEqual([
+      "accounts",
+      "audit_events",
+      "categories",
+      "checkpoint_checks",
       "ledger_metadata",
       "login_throttles",
       "owner_credentials",
       "preferences",
+      "reconciliation_checkpoints",
       "schema_migrations",
       "sessions",
+      "transactions",
     ]);
     const applied = appliedMigrations(db);
-    expect(applied).toHaveLength(1);
-    expect(applied[0].checksum).toHaveLength(64);
+    expect(applied).toHaveLength(SHIPPED);
+    for (const record of applied) expect(record.checksum).toHaveLength(64);
+  });
+
+  it("reaches the same schema whether applied all at once or one stage at a time", () => {
+    // Stage 2 must land correctly on a database that already carries stage 1,
+    // not only on a fresh one.
+    const dir = scratchMigrations();
+    const only0001 = scratchMigrations();
+    rmSync(join(only0001, "0002_accounts.sql"));
+
+    ledger = createTemporaryLedger({ migrated: false });
+    migrate(ledger.db, only0001);
+    migrate(ledger.db, dir);
+    const incremental = schemaText(ledger.db);
+
+    const fresh = createTemporaryLedger();
+    try {
+      expect(incremental).toEqual(schemaText(fresh.db));
+    } finally {
+      fresh.close();
+    }
   });
 
   it("is a no-op the second time", () => {
@@ -92,8 +137,8 @@ describe("migration runner", () => {
     ledger = createTemporaryLedger({ migrated: false });
     migrate(ledger.db, dir);
 
-    // Renumber: the applied file becomes 0002 and a new 0001 appears first.
-    cpSync(join(dir, "0001_foundation.sql"), join(dir, "0002_foundation.sql"));
+    // Renumber: the applied file moves to a later slot and a new 0001 appears.
+    cpSync(join(dir, "0001_foundation.sql"), join(dir, `${SLOT_1}_foundation.sql`));
     writeFileSync(
       join(dir, "0001_foundation.sql"),
       "CREATE TABLE sneaked_in (a INTEGER) STRICT;\n",
@@ -107,12 +152,12 @@ describe("migration runner", () => {
     const dir = scratchMigrations();
     ledger = createTemporaryLedger({ migrated: false });
     writeFileSync(
-      join(dir, "0002_future.sql"),
-      "CREATE TABLE later (a INTEGER) STRICT;\nUPDATE ledger_metadata SET schema_version = 2;\n",
+      join(dir, `${SLOT_1}_future.sql`),
+      `CREATE TABLE later (a INTEGER) STRICT;\nUPDATE ledger_metadata SET schema_version = ${String(VERSION_1)};\n`,
     );
     migrate(ledger.db, dir);
 
-    rmSync(join(dir, "0002_future.sql"));
+    rmSync(join(dir, `${SLOT_1}_future.sql`));
     expect(() => migrate(ledger!.db, dir)).toThrow(/older than the data/);
   });
 
@@ -120,7 +165,7 @@ describe("migration runner", () => {
     const dir = scratchMigrations();
     ledger = createTemporaryLedger({ migrated: false });
     writeFileSync(
-      join(dir, "0002_broken.sql"),
+      join(dir, `${SLOT_1}_broken.sql`),
       [
         "CREATE TABLE half_created (a INTEGER NOT NULL) STRICT;",
         "INSERT INTO half_created (a) VALUES (1);",
@@ -130,14 +175,14 @@ describe("migration runner", () => {
 
     expect(() => migrate(ledger!.db, dir)).toThrow(MigrationError);
     expect(tableNames(ledger.db)).not.toContain("half_created");
-    expect(schemaVersion(ledger.db)).toBe(1);
+    expect(schemaVersion(ledger.db)).toBe(SHIPPED);
   });
 
   it("blocks a table rebuild that would leave a dangling reference", () => {
     const dir = scratchMigrations();
     ledger = createTemporaryLedger({ migrated: false });
     writeFileSync(
-      join(dir, "0002_parents.sql"),
+      join(dir, `${SLOT_1}_parents.sql`),
       [
         "CREATE TABLE parents (id TEXT PRIMARY KEY) STRICT;",
         "CREATE TABLE children (",
@@ -146,7 +191,7 @@ describe("migration runner", () => {
         ") STRICT;",
         "INSERT INTO parents (id) VALUES ('p1');",
         "INSERT INTO children (id, parent_id) VALUES ('c1', 'p1');",
-        "UPDATE ledger_metadata SET schema_version = 2;",
+        `UPDATE ledger_metadata SET schema_version = ${String(VERSION_1)};`,
       ].join("\n"),
     );
     migrate(ledger.db, dir);
@@ -154,18 +199,18 @@ describe("migration runner", () => {
     // A rebuild that drops the referenced row: legal while foreign keys are
     // off, caught by the foreign_key_check before the commit.
     writeFileSync(
-      join(dir, "0003_bad_rebuild.sql"),
+      join(dir, `${SLOT_2}_bad_rebuild.sql`),
       [
         "CREATE TABLE parents_new (id TEXT PRIMARY KEY) STRICT;",
         "INSERT INTO parents_new (id) SELECT id FROM parents WHERE id <> 'p1';",
         "DROP TABLE parents;",
         "ALTER TABLE parents_new RENAME TO parents;",
-        "UPDATE ledger_metadata SET schema_version = 3;",
+        `UPDATE ledger_metadata SET schema_version = ${String(VERSION_2)};`,
       ].join("\n"),
     );
 
     expect(() => migrate(ledger!.db, dir)).toThrow(/foreign key violations/);
-    expect(schemaVersion(ledger.db)).toBe(2);
+    expect(schemaVersion(ledger.db)).toBe(VERSION_1);
     const children = ledger.db.prepare("SELECT COUNT(*) AS n FROM children").get() as {
       n: bigint;
     };
@@ -177,7 +222,7 @@ describe("migration runner", () => {
     const dir = scratchMigrations();
     ledger = createTemporaryLedger({ migrated: false });
     writeFileSync(
-      join(dir, "0002_parents.sql"),
+      join(dir, `${SLOT_1}_parents.sql`),
       [
         "CREATE TABLE parents (id TEXT PRIMARY KEY, label TEXT NOT NULL) STRICT;",
         "CREATE TABLE children (",
@@ -186,12 +231,12 @@ describe("migration runner", () => {
         ") STRICT;",
         "INSERT INTO parents (id, label) VALUES ('p1', 'first');",
         "INSERT INTO children (id, parent_id) VALUES ('c1', 'p1');",
-        "UPDATE ledger_metadata SET schema_version = 2;",
+        `UPDATE ledger_metadata SET schema_version = ${String(VERSION_1)};`,
       ].join("\n"),
     );
     // Tighten a CHECK constraint, which SQLite can only do by rebuilding.
     writeFileSync(
-      join(dir, "0003_rebuild.sql"),
+      join(dir, `${SLOT_2}_rebuild.sql`),
       [
         "CREATE TABLE parents_new (",
         "  id TEXT PRIMARY KEY,",
@@ -200,11 +245,11 @@ describe("migration runner", () => {
         "INSERT INTO parents_new (id, label) SELECT id, label FROM parents;",
         "DROP TABLE parents;",
         "ALTER TABLE parents_new RENAME TO parents;",
-        "UPDATE ledger_metadata SET schema_version = 3;",
+        `UPDATE ledger_metadata SET schema_version = ${String(VERSION_2)};`,
       ].join("\n"),
     );
 
-    expect(migrate(ledger.db, dir).schemaVersion).toBe(3);
+    expect(migrate(ledger.db, dir).schemaVersion).toBe(VERSION_2);
     expect(() =>
       ledger!.db.prepare("INSERT INTO parents (id, label) VALUES ('p2', '  ')").run(),
     ).toThrow(/CHECK constraint failed/);
@@ -213,7 +258,7 @@ describe("migration runner", () => {
   it("refuses a migration that does not record its schema version", () => {
     const dir = scratchMigrations();
     ledger = createTemporaryLedger({ migrated: false });
-    writeFileSync(join(dir, "0002_forgetful.sql"), "CREATE TABLE t (a INTEGER) STRICT;\n");
+    writeFileSync(join(dir, `${SLOT_1}_forgetful.sql`), "CREATE TABLE t (a INTEGER) STRICT;\n");
 
     expect(() => migrate(ledger!.db, dir)).toThrow(/schema_version/);
     expect(tableNames(ledger.db)).not.toContain("t");
@@ -237,7 +282,7 @@ describe("migration runner", () => {
   it("restores foreign keys even when the migration fails", () => {
     const dir = scratchMigrations();
     ledger = createTemporaryLedger({ migrated: false });
-    writeFileSync(join(dir, "0002_broken.sql"), "SELECT this_does_not_exist();");
+    writeFileSync(join(dir, `${SLOT_1}_broken.sql`), "SELECT this_does_not_exist();");
 
     expect(() => migrate(ledger!.db, dir)).toThrow(MigrationError);
     expect(Number(ledger.db.pragma("foreign_keys", { simple: true }))).toBe(1);
