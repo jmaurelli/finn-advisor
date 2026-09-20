@@ -4,20 +4,21 @@ A responsive single-user personal finance workspace prototype for reviewing spen
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — build and run the API server on the configured loopback port
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `DATABASE_URL` applies only to the optional database scaffold; the frontend preview requires no database.
-- The Express/PostgreSQL scaffold is not an approved backend architecture. HumanLayer owns that decision. See `docs/HUMANLAYER-HANDOFF.md`.
+- `pnpm --filter @workspace/db run migrate --data-dir <dir>` — apply database migrations (the only way the schema changes; the server never migrates at startup)
+- `pnpm --filter @workspace/api-server run owner:set-password --data-dir <dir>` — set the owner password (typed at the prompt)
+- `pnpm run check` — contract checks, typecheck and tests
+- The API server needs `MONEY_DESK_DATA_DIR`, `MONEY_DESK_BIND_ADDRESS`, `MONEY_DESK_PORT`, `MONEY_DESK_ALLOWED_ORIGIN` and `NODE_ENV`; it fails to start without them.
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- DB: SQLite (`better-sqlite3`, pinned, safe-integer mode), WAL, STRICT tables, checksummed SQL migrations
+- Validation: Zod (`zod/v4`), generated from the OpenAPI contract
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
