@@ -7,7 +7,14 @@ import { withWriteTransaction, type SqliteDatabase } from "@workspace/db";
  * the form, and a bounded owner-wide backoff stops a spread-out attack from
  * sidestepping it. The owner-wide delay is capped, because a lockout the
  * owner cannot wait out would turn a nuisance into a denial of service
- * against the only person who uses this.
+ * against the only person who uses this. `clearAllThrottles` is the deliberate
+ * way out, run by the owner at the console.
+ *
+ * Known limit, to be resolved at the proxy stage: the source key is the
+ * socket address, and behind a reverse proxy every request arrives from the
+ * loopback address, so the per-source bucket stops distinguishing clients.
+ * Until the proxy's forwarded address is explicitly trusted and validated,
+ * treat the per-source limit as a single shared bucket.
  */
 export const SOURCE_WINDOW_MS = 15 * 60 * 1000;
 export const SOURCE_MAX_FAILURES = 5;
@@ -98,6 +105,15 @@ function bumpOwner(db: SqliteDatabase, now: number): void {
        locked_until = excluded.locked_until,
        updated_at = excluded.updated_at`,
   ).run(failures, windowStarted, lockedUntil, now);
+}
+
+/** Clears every lockout. The console command behind it is how an owner who
+ * has locked themselves out gets back in without editing the database. */
+export function clearAllThrottles(db: SqliteDatabase): number {
+  return withWriteTransaction(db, () => {
+    const result = db.prepare("DELETE FROM login_throttles").run();
+    return Number(result.changes);
+  });
 }
 
 /** A correct password clears both counters. */

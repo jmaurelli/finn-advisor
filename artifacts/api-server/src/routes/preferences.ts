@@ -24,9 +24,11 @@ export function preferencesRoutes(deps: AppDependencies): IRouter {
   });
 
   router.patch("/preferences", requireSession, requireCsrf, (req, res) => {
+    // Precondition first: telling the owner their edit is malformed when the
+    // real problem is a missing version would send them down the wrong path.
+    const expected = requiredIfMatch(req);
     requireAtLeastOneProperty(req.body);
     const patch = validateBody(UpdatePreferencesBody, req.body);
-    const expected = requiredIfMatch(req);
 
     const saved = withWriteTransaction(deps.db, () => {
       const row = readPreferences(deps);
@@ -74,11 +76,13 @@ function requiredIfMatch(req: Request): string {
       detail: "Send the version you are changing (If-Match).",
     });
   }
+  // Present but unusable is a bad request, not a missing precondition: the
+  // client did send something, it just is not a version this API issued.
   if (!/^"[1-9][0-9]{0,17}"$/.test(value.trim())) {
     throw problem({
-      status: 428,
-      code: "precondition_required",
-      title: "Confirmation needed",
+      status: 400,
+      code: "invalid_request",
+      title: "Could not read the request",
       detail: "The version supplied with this change was not in the expected form.",
     });
   }

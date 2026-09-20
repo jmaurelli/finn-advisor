@@ -1,8 +1,8 @@
 import BetterSqlite3 from "better-sqlite3";
-import { mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
-import { DatabaseSetupError } from "./errors.js";
+import { DatabaseSetupError, isBusy } from "./errors.js";
 import { assertLocalFilesystem } from "./filesystem.js";
 
 export type SqliteDatabase = BetterSqlite3.Database;
@@ -17,6 +17,8 @@ export interface OpenLedgerOptions {
   dataDir: string;
   /** Milliseconds a statement waits for the write lock before reporting busy. */
   busyTimeoutMs?: number;
+  /** Milliseconds the open-time self-test waits for the write lock. */
+  openTimeoutMs?: number;
   /** Skip the mountinfo check. Only for unit tests of the check itself. */
   skipFilesystemCheck?: boolean;
 }
@@ -37,7 +39,15 @@ export function ledgerPath(dataDir: string): string {
 export function openLedger(options: OpenLedgerOptions): SqliteDatabase {
   const dataDir = resolve(options.dataDir);
   const busyTimeoutMs = options.busyTimeoutMs ?? 250;
+  // Startup waits longer for the lock than a request does: opening while the
+  // migration CLI or a backup holds the write lock should wait, not fail.
+  const openTimeoutMs = options.openTimeoutMs ?? 5000;
 
+  // Checked before the directory is created, so a refused filesystem is not
+  // written to at all.
+  if (options.skipFilesystemCheck !== true) {
+    assertLocalFilesystem(nearestExistingPath(dataDir));
+  }
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   if (options.skipFilesystemCheck !== true) {
     assertLocalFilesystem(dataDir);
@@ -49,18 +59,36 @@ export function openLedger(options: OpenLedgerOptions): SqliteDatabase {
     db.pragma("foreign_keys = ON");
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = FULL");
-    db.pragma(`busy_timeout = ${busyTimeoutMs}`);
+    db.pragma(`busy_timeout = ${openTimeoutMs}`);
 
     assertPragma(db, "foreign_keys", 1n);
     assertPragma(db, "journal_mode", "wal");
     assertPragma(db, "synchronous", 2n);
-    assertPragma(db, "busy_timeout", BigInt(busyTimeoutMs));
     assertExactIntegers(db);
+
+    db.pragma(`busy_timeout = ${busyTimeoutMs}`);
+    assertPragma(db, "busy_timeout", BigInt(busyTimeoutMs));
   } catch (error) {
     db.close();
+    if (isBusy(error)) {
+      throw new DatabaseSetupError(
+        "Another process is writing to the ledger; it could not be opened. Wait for that command to finish and try again.",
+      );
+    }
     throw error;
   }
   return db;
+}
+
+/** The closest ancestor that exists, so the filesystem check has something real to resolve. */
+function nearestExistingPath(path: string): string {
+  let candidate = path;
+  while (!existsSync(candidate)) {
+    const parent = dirname(candidate);
+    if (parent === candidate) return candidate;
+    candidate = parent;
+  }
+  return candidate;
 }
 
 function assertPragma(
@@ -82,7 +110,7 @@ function assertPragma(
  * mode is ever switched off this returns 9007199254740992 and startup fails,
  * which is the point: a silent one-cent class of error becomes a loud one.
  */
-function assertExactIntegers(db: SqliteDatabase): void {
+export function assertExactIntegers(db: SqliteDatabase): void {
   // A real table in the main database, not a TEMP one: creating any temp table
   // holds a lock that blocks a truncating WAL checkpoint for the life of the
   // connection, which would leave a stray -wal file behind on shutdown.

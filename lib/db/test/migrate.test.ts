@@ -219,6 +219,30 @@ describe("migration runner", () => {
     expect(tableNames(ledger.db)).not.toContain("t");
   });
 
+  /**
+   * The runner turns foreign keys off around a migration. Whatever the
+   * connection's integer mode, it must put them back: a connection left with
+   * enforcement off would accept dangling references for the rest of its life.
+   */
+  it.each([true, false])("restores foreign keys with safe integers %s", (safeIntegers) => {
+    ledger = createTemporaryLedger({ migrated: false });
+    ledger.db.defaultSafeIntegers(safeIntegers);
+
+    migrate(ledger.db);
+
+    expect(Number(ledger.db.pragma("foreign_keys", { simple: true }))).toBe(1);
+    ledger.db.defaultSafeIntegers(true);
+  });
+
+  it("restores foreign keys even when the migration fails", () => {
+    const dir = scratchMigrations();
+    ledger = createTemporaryLedger({ migrated: false });
+    writeFileSync(join(dir, "0002_broken.sql"), "SELECT this_does_not_exist();");
+
+    expect(() => migrate(ledger!.db, dir)).toThrow(MigrationError);
+    expect(Number(ledger.db.pragma("foreign_keys", { simple: true }))).toBe(1);
+  });
+
   it("rejects a badly named migration file", () => {
     const dir = scratchMigrations();
     writeFileSync(join(dir, "not-a-migration.sql"), "SELECT 1;");

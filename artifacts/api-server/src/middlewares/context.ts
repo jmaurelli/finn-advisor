@@ -56,6 +56,41 @@ export function requireSameOrigin(deps: AppDependencies): RequestHandler {
   };
 }
 
+/**
+ * While nothing is trusted in front of this service, a forwarding header can
+ * only have been added by something pretending to be a proxy, so the request
+ * is refused rather than interpreted. The proxy stage replaces this with an
+ * explicit, narrow trust configuration.
+ */
+const FORWARDING_HEADERS = [
+  "x-forwarded-for",
+  "x-forwarded-host",
+  "x-forwarded-proto",
+  "x-forwarded-port",
+  "forwarded",
+  "x-real-ip",
+];
+
+export function rejectForwardingHeaders(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): void {
+  const present = FORWARDING_HEADERS.find((name) => req.get(name) !== undefined);
+  if (present === undefined) {
+    next();
+    return;
+  }
+  next(
+    problem({
+      status: 400,
+      code: "invalid_request",
+      title: "Could not read the request",
+      detail: "This request carried headers that only a trusted proxy may set.",
+    }),
+  );
+}
+
 /** Writes carry JSON only; anything else is refused before it is parsed. */
 export function requireJsonContentType(req: Request, _res: Response, next: NextFunction): void {
   if (!isWrite(req)) {

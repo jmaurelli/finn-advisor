@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { SESSION_ABSOLUTE_MS, SESSION_IDLE_MS } from "../src/config.js";
+import { OWNER_MAX_LOCK_MS, recordFailure, retryAfterSeconds } from "../src/auth/throttle.js";
 import { ALLOWED_ORIGIN, startTestServer, TEST_PASSWORD, type TestServer } from "./harness.js";
 
 let api: TestServer;
@@ -158,6 +159,56 @@ describe("throttling", () => {
     api.clock.advance(16 * 60 * 1000);
 
     const response = await api.login();
+    expect(response.status).toBe(200);
+  });
+
+  it("counts owner-wide failures as well as per-source ones", async () => {
+    await failTimes(3);
+
+    const owner = api.db
+      .prepare("SELECT failure_count FROM login_throttles WHERE scope = 'owner'")
+      .get() as { failure_count: bigint };
+    const source = api.db
+      .prepare("SELECT failure_count FROM login_throttles WHERE scope LIKE 'source:%'")
+      .get() as { failure_count: bigint };
+
+    expect(owner.failure_count).toBe(3n);
+    expect(source.failure_count).toBe(3n);
+  });
+
+  /**
+   * The owner-wide backoff exists so an attacker spread across many sources
+   * cannot sidestep the per-source limit. It must also stay bounded: an
+   * unbounded one would let someone else lock the owner out of their own
+   * finances for good.
+   */
+  it("backs off owner-wide but never beyond the cap", async () => {
+    const now = api.clock.now();
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      recordFailure(api.db, `10.0.0.${String(attempt)}`, now);
+    }
+
+    const owner = api.db
+      .prepare("SELECT failure_count, locked_until FROM login_throttles WHERE scope = 'owner'")
+      .get() as { failure_count: bigint; locked_until: bigint | null };
+
+    expect(Number(owner.failure_count)).toBe(40);
+    expect(owner.locked_until).not.toBeNull();
+    expect(Number(owner.locked_until) - now).toBeGreaterThan(0);
+    expect(Number(owner.locked_until) - now).toBeLessThanOrEqual(OWNER_MAX_LOCK_MS);
+
+    // Still blocked for a source that never failed, and still recoverable.
+    expect(retryAfterSeconds(api.db, "192.168.1.50", now)).toBeGreaterThan(0);
+    expect(retryAfterSeconds(api.db, "192.168.1.50", now + OWNER_MAX_LOCK_MS + 1000)).toBe(0);
+  });
+
+  it("lets the owner back in after setting a new password", async () => {
+    await failTimes(5);
+    expect((await api.login()).status).toBe(429);
+
+    await api.setPassword("another-synthetic-password");
+
+    const response = await api.login("another-synthetic-password");
     expect(response.status).toBe(200);
   });
 

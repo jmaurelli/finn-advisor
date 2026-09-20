@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { resolve, sep } from "node:path";
 
 import { DatabaseSetupError } from "./errors.js";
@@ -77,7 +77,15 @@ export function assertLocalFilesystem(
   path: string,
   mountinfoPath = "/proc/self/mountinfo",
 ): string {
-  const absolute = resolve(path);
+  // The real path, not the requested one: `resolve` normalizes `..` but does
+  // not follow symlinks, so a link into a network mount would otherwise be
+  // matched against the link's own location and wrongly accepted.
+  let absolute: string;
+  try {
+    absolute = realpathSync(resolve(path));
+  } catch {
+    absolute = resolve(path);
+  }
 
   let contents: string;
   try {

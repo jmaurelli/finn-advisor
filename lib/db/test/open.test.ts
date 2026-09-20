@@ -1,11 +1,11 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { DatabaseSetupError } from "../src/errors.js";
 import { assertLocalFilesystem, parseMountinfo } from "../src/filesystem.js";
-import { closeLedger, ledgerPath, openLedger } from "../src/open.js";
+import { assertExactIntegers, closeLedger, ledgerPath, openLedger } from "../src/open.js";
 import { createTemporaryLedger, type TemporaryLedger } from "../src/testing.js";
 
 let ledger: TemporaryLedger | undefined;
@@ -54,6 +54,33 @@ describe("connection factory", () => {
     expect(BigInt(row.cents)).not.toBe(9007199254740993n);
     expect(BigInt(row.cents)).toBe(9007199254740992n);
     db.defaultSafeIntegers(true);
+  });
+
+  /**
+   * The self-test's own failure path. Without this, reordering `open.ts` so
+   * safe integers are set after the check would leave the suite green.
+   */
+  it("refuses to open when the round trip is not exact", () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "money-desk-selftest-"));
+    try {
+      const db = openLedger({ dataDir });
+      db.defaultSafeIntegers(false);
+      expect(() => assertExactIntegers(db)).toThrow(DatabaseSetupError);
+      expect(() => assertExactIntegers(db)).toThrow(/exact integers are not available/);
+      db.defaultSafeIntegers(true);
+      expect(() => assertExactIntegers(db)).not.toThrow();
+      closeLedger(db);
+    } finally {
+      rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves no self-test table behind", () => {
+    ledger = createTemporaryLedger({ migrated: false });
+    const rows = ledger.db
+      .prepare("SELECT name FROM sqlite_master WHERE name = 'startup_self_test'")
+      .all();
+    expect(rows).toEqual([]);
   });
 
   it("creates the ledger file inside the data directory", () => {
@@ -106,6 +133,31 @@ describe("filesystem guard", () => {
     expect(() => assertLocalFilesystem(path, writeMountinfo(mountinfo))).toThrow(
       new RegExp(`${fstype.replace(".", "\\.")} filesystem`),
     );
+  });
+
+  /**
+   * A symlink into a refused filesystem must not launder it: `resolve` alone
+   * would match the link's own location.
+   */
+  it("follows a symlink into a refused filesystem", () => {
+    const root = mkdtempSync(join(tmpdir(), "money-desk-links-"));
+    try {
+      const nas = join(root, "mnt", "nas", "money-desk");
+      mkdirSync(nas, { recursive: true });
+      const link = join(root, "local-data");
+      symlinkSync(nas, link);
+
+      const mounts = [
+        "25 30 0:24 / / rw,relatime shared:1 - ext4 /dev/sda1 rw",
+        `41 25 0:41 / ${join(root, "mnt", "nas")} rw,relatime shared:2 - nfs4 10.0.0.5:/vol rw`,
+      ].join("\n");
+      const mountinfo = writeMountinfo(mounts);
+
+      expect(() => assertLocalFilesystem(nas, mountinfo)).toThrow(/nfs4 filesystem/);
+      expect(() => assertLocalFilesystem(link, mountinfo)).toThrow(/nfs4 filesystem/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("refuses when the filesystem cannot be determined", () => {

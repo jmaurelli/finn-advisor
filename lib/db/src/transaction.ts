@@ -32,6 +32,12 @@ export function withWriteTransaction<T>(
   try {
     result = fn(db);
     if (isPromiseLike(result)) {
+      // Swallow the callback's own rejection: it is already being reported as
+      // a misuse, and an unhandled rejection later would be noise.
+      void (result as PromiseLike<unknown>).then?.(
+        () => undefined,
+        () => undefined,
+      );
       throw new TypeError(
         "withWriteTransaction requires a synchronous callback; it received a promise",
       );

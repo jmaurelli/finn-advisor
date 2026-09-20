@@ -149,7 +149,10 @@ export function migrate(
   const appliedNow: string[] = [];
 
   for (const migration of pending) {
-    const foreignKeysWere = db.pragma("foreign_keys", { simple: true });
+    // Number(), not a bigint literal: safe-integer mode decides whether this
+    // pragma reads back as 1n or 1, and comparing against the wrong one would
+    // silently restore foreign keys to OFF on a live connection.
+    const foreignKeysWereOn = Number(db.pragma("foreign_keys", { simple: true })) === 1;
     db.pragma("foreign_keys = OFF");
     try {
       db.exec("BEGIN IMMEDIATE");
@@ -177,13 +180,36 @@ export function migrate(
               `Migration "${migration.name}" failed: ${(error as Error).message}`,
             );
       }
-    } finally {
-      db.pragma(`foreign_keys = ${foreignKeysWere === 1n ? "ON" : "OFF"}`);
+    } catch (error) {
+      // Restore quietly on the failure path: a problem restoring the pragma
+      // must not hide why the migration failed.
+      try {
+        restoreForeignKeys(db, foreignKeysWereOn);
+      } catch {
+        // reported by the throw below
+      }
+      throw error;
     }
+    restoreForeignKeys(db, foreignKeysWereOn);
     appliedNow.push(migration.name);
   }
 
   return { appliedNow, schemaVersion: schemaVersion(db) };
+}
+
+/**
+ * Puts enforcement back as it was, and proves it: silently leaving foreign
+ * keys off on a live connection would disable the protection the rest of the
+ * schema depends on.
+ */
+function restoreForeignKeys(db: SqliteDatabase, wasOn: boolean): void {
+  db.pragma(`foreign_keys = ${wasOn ? "ON" : "OFF"}`);
+  const now = Number(db.pragma("foreign_keys", { simple: true })) === 1;
+  if (now !== wasOn) {
+    throw new MigrationError(
+      "Foreign key enforcement could not be restored after the migration",
+    );
+  }
 }
 
 /**

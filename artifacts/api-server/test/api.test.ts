@@ -72,12 +72,34 @@ describe("security baseline", () => {
     expect(response.text).not.toContain("<html");
   });
 
-  it("answers an unknown path outside /api with problem JSON too", async () => {
+  it("answers an unknown path outside /api with problem JSON and the same headers", async () => {
     const response = await api.request("/elsewhere");
 
     expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).toContain("application/problem+json");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(response.headers.get("x-request-id")).toBeTruthy();
+    expect(problemOf(response.body).requestId).toBe(response.headers.get("x-request-id"));
     expect(response.text).not.toContain("<html");
+  });
+
+  /**
+   * Nothing is trusted in front of this service yet, so a forwarding header
+   * can only be something pretending to be a proxy.
+   */
+  it.each([
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "forwarded",
+    "x-real-ip",
+  ])("refuses a request carrying %s", async (header) => {
+    const response = await api.request("/api/healthz", { headers: { [header]: "10.0.0.9" } });
+
+    expect(response.status).toBe(400);
+    expect(problemOf(response.body).code).toBe("invalid_request");
   });
 
   it("refuses a body over the limit", async () => {
@@ -211,6 +233,27 @@ describe("preferences", () => {
 
     expect(stale.status).toBe(412);
     expect(stale.body).toMatchObject({ code: "version_mismatch", currentVersion: "2" });
+  });
+
+  it("refuses a malformed If-Match as a bad request, not a missing one", async () => {
+    await api.login();
+    for (const value of ["*", 'W/"1"', "1", '"0"']) {
+      const response = await api.request("/api/preferences", {
+        method: "PATCH",
+        body: { density: "compact" },
+        headers: { "if-match": value },
+      });
+      expect(response.status, value).toBe(400);
+      expect(problemOf(response.body).code, value).toBe("invalid_request");
+    }
+  });
+
+  it("reports the missing version before complaining about the body", async () => {
+    await api.login();
+    const response = await api.request("/api/preferences", { method: "PATCH", body: {} });
+
+    expect(response.status).toBe(428);
+    expect(problemOf(response.body).code).toBe("precondition_required");
   });
 
   it("rejects an empty change", async () => {

@@ -10,9 +10,10 @@
 import { closeLedger, openLedger, withWriteTransaction, type SqliteDatabase } from "@workspace/db";
 
 import { hashPassword } from "../auth/passwords.js";
+import { clearAllThrottles } from "../auth/throttle.js";
 
-const ETX = "";
-const BACKSPACE = "";
+const ETX = "\u0003";
+const BACKSPACE = "\u007f";
 
 function argument(name: string): string | undefined {
   const flag = `--${name}`;
@@ -109,13 +110,19 @@ async function main(): Promise<void> {
   const db = openLedger({ dataDir });
   try {
     setOwnerPassword(db, await hashPassword(password), Date.now());
-    console.log("Password saved. Every existing sign-in has been signed out.");
+    // Setting a new password is also the way out of a lockout, so the
+    // failure counters go with it. Otherwise an owner locked out by someone
+    // else's wrong guesses would have no supported way back in.
+    clearAllThrottles(db);
+    console.log(
+      "Password saved. Every existing sign-in has been signed out and any sign-in lockout is cleared.",
+    );
   } finally {
     closeLedger(db);
   }
 }
 
-if (process.argv[1]?.endsWith("set-password.ts") === true) {
+if (/set-password\.[cm]?[jt]s$/.test(process.argv[1] ?? "")) {
   main().catch((error: unknown) => {
     console.error((error as Error).message);
     process.exitCode = 1;

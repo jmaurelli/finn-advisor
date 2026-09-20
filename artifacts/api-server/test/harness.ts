@@ -11,6 +11,7 @@ import { defaultDependencies, type AppDependencies } from "../src/deps.js";
 import { TestClock } from "../src/lib/clock.js";
 import { hashPassword } from "../src/auth/passwords.js";
 import { setOwnerPassword } from "../src/cli/set-password.js";
+import { clearAllThrottles } from "../src/auth/throttle.js";
 
 export const ALLOWED_ORIGIN = "http://localhost";
 export const TEST_PASSWORD = "synthetic-correct-horse-battery";
@@ -27,6 +28,7 @@ export interface TestServer {
   login: (password?: string) => Promise<TestResponse>;
   restart: () => Promise<void>;
   setPassword: (password: string) => Promise<void>;
+  clearThrottles: () => void;
   close: () => Promise<void>;
 }
 
@@ -158,6 +160,11 @@ export async function startTestServer(
 
     async setPassword(password) {
       setOwnerPassword(db, await hashPassword(password), clock.now());
+      clearAllThrottles(db);
+    },
+
+    clearThrottles() {
+      clearAllThrottles(db);
     },
 
     /** Stops and starts the process's worth of state, keeping the files. */

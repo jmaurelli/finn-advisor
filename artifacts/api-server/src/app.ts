@@ -6,7 +6,12 @@ import { MAX_JSON_BODY_BYTES } from "./config.js";
 import type { AppDependencies } from "./deps.js";
 import { ProblemError, sendProblem } from "./lib/problem.js";
 import { securityHeaders } from "./lib/security.js";
-import { requestContext, requireJsonContentType, requireSameOrigin } from "./middlewares/context.js";
+import {
+  rejectForwardingHeaders,
+  requestContext,
+  requireJsonContentType,
+  requireSameOrigin,
+} from "./middlewares/context.js";
 import { attachSession } from "./middlewares/session.js";
 import { healthRoutes } from "./routes/health.js";
 import { preferencesRoutes } from "./routes/preferences.js";
@@ -25,10 +30,13 @@ export function createApp(deps: AppDependencies): Express {
   api.use(requestContext(deps));
   api.use(securityHeaders);
   api.use(accessLog(deps));
+  api.use(rejectForwardingHeaders);
   api.use(cookieParser());
   api.use(requireJsonContentType);
-  api.use(express.json({ limit: MAX_JSON_BODY_BYTES, strict: true, type: "application/json" }));
+  // Origin before the parser: a cross-origin write should be refused without
+  // buffering its body first.
   api.use(requireSameOrigin(deps));
+  api.use(express.json({ limit: MAX_JSON_BODY_BYTES, strict: true, type: "application/json" }));
   api.use(attachSession(deps));
 
   api.use(healthRoutes(deps));
@@ -52,22 +60,22 @@ export function createApp(deps: AppDependencies): Express {
 
   app.use("/api", api);
 
-  // Outside /api there is no application, and saying so in JSON keeps the
-  // surface uniform.
-  app.use((req: Request, res: Response) => {
-    res.setHeader("Cache-Control", "no-store");
-    res.status(404).type("application/problem+json").send(
-      JSON.stringify({
-        type: "urn:money-desk:problem:not_found",
-        title: "Not found",
+  // Outside /api there is no application. It still gets the request id and
+  // the same hardening, so "every response" means every response.
+  app.use(requestContext(deps));
+  app.use(securityHeaders);
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    next(
+      new ProblemError({
         status: 404,
         code: "not_found",
+        title: "Not found",
         detail: "There is nothing at this address.",
-        requestId: deps.newId(),
       }),
     );
     void req;
   });
+  app.use(errorHandler(deps));
 
   return app;
 }
