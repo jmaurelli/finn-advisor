@@ -7,6 +7,7 @@ import type { SqliteDatabase } from "@workspace/db";
 import { accountReconciliation } from "../domain/reconciliation.js";
 import { aggregateMoney, money } from "../domain/money.js";
 import { balanceAt, lastPostedDate, type AccountBaseline } from "../domain/balances.js";
+import { dayBefore } from "../domain/dates.js";
 import { formatCounter, nextCounter } from "../domain/versions.js";
 import { isoTimestamp } from "../lib/clock.js";
 import { problem } from "../lib/problem.js";
@@ -120,19 +121,18 @@ export interface AccountDto {
  */
 export function accountDto(db: SqliteDatabase, row: AccountRow, today: string): AccountDto {
   const baseline = baselineOf(row);
-  const { balance, coverage } = balanceAt(db, baseline, today);
 
-  // The contract requires every account to carry a current balance, which is
-  // only an honest field if today is always inside coverage. That is why a
-  // tracking start in the future is refused when it is set: there is no such
-  // thing as the closing balance of a day that has not happened. If this ever
-  // fails, the invariant has been broken somewhere and a loud internal fault
-  // is the right answer - reporting the opening balance as "current" would
-  // fabricate exactly the number the design forbids fabricating.
-  if (coverage !== "covered" || balance === null) {
-    throw new Error(
-      `account ${row.id} has a tracking start after today (${row.tracking_start_date} > ${today})`,
-    );
+  // The contract requires every account to carry a current balance. A
+  // tracking start after today is refused when it is set, so today is
+  // normally inside coverage. If the server clock later steps back past a
+  // start date, the honest answer is the opening balance reported for the day
+  // it belongs to (the day before the start) - never a fabricated "today", and
+  // never a failure that takes the whole account list down (stage 2 review).
+  let balanceAsOf = today;
+  let { balance } = balanceAt(db, baseline, today);
+  if (balance === null) {
+    balanceAsOf = dayBefore(row.tracking_start_date);
+    balance = row.opening_cents;
   }
 
   return {
@@ -146,7 +146,7 @@ export function accountDto(db: SqliteDatabase, row: AccountRow, today: string): 
     status: row.archived_at === null ? "active" : "archived",
     archivedAt: row.archived_at === null ? null : isoTimestamp(Number(row.archived_at)),
     currentBalance: aggregateMoney(balance),
-    balanceAsOf: today,
+    balanceAsOf,
     lastImportedPostedDate: lastPostedDate(db, row.id),
     reconciliation: accountReconciliation(db, baseline),
     version: formatCounter(row.version),

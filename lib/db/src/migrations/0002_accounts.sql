@@ -95,14 +95,17 @@ INSERT INTO categories (
 CREATE TRIGGER categories_protected_no_update
 BEFORE UPDATE ON categories
 FOR EACH ROW WHEN OLD.protected = 1 AND (
-  NEW.display_name <> OLD.display_name
+  -- The transaction constraints name these ids as literals, so a changed id
+  -- would make every income row impossible to write.
+  NEW.id <> OLD.id
+  OR NEW.display_name <> OLD.display_name
   OR NEW.normalized_name <> OLD.normalized_name
   OR NEW.system_kind IS NOT OLD.system_kind
   OR NEW.protected <> OLD.protected
   OR NEW.archived_at IS NOT OLD.archived_at
 )
 BEGIN
-  SELECT RAISE(ABORT, 'protected category cannot be renamed, archived or unprotected');
+  SELECT RAISE(ABORT, 'protected category cannot be renamed, re-identified, archived or unprotected');
 END;
 
 CREATE TRIGGER categories_protected_no_delete
@@ -123,8 +126,9 @@ CREATE TABLE transactions (
                       AND posted_date BETWEEN '1900-01-01' AND '2999-12-31'
                     ),
   -- Exactly as the bank wrote it; the normalized form is for searching.
-  merchant_text     TEXT    NOT NULL CHECK (length(merchant_text) BETWEEN 1 AND 500),
-  normalized_text   TEXT    NOT NULL CHECK (length(normalized_text) <= 500),
+  -- 2,000 is the contract's limit for a merchant description (design section 6).
+  merchant_text     TEXT    NOT NULL CHECK (length(merchant_text) BETWEEN 1 AND 2000),
+  normalized_text   TEXT    NOT NULL CHECK (length(normalized_text) <= 2000),
   amount_cents      INTEGER NOT NULL CHECK (
                       amount_cents <> 0
                       AND amount_cents > -100000000000 AND amount_cents < 100000000000
@@ -206,6 +210,75 @@ CREATE TABLE checkpoint_checks (
 ) STRICT;
 
 CREATE INDEX checkpoint_checks_checkpoint ON checkpoint_checks (checkpoint_id, checked_at DESC);
+
+-- Checks are append-only. That keeps the history honest, and it is what lets
+-- "the latest check" mean the one recorded last (the highest rowid).
+CREATE TRIGGER checkpoint_checks_no_update
+BEFORE UPDATE ON checkpoint_checks
+BEGIN
+  SELECT RAISE(ABORT, 'a recorded check cannot be changed');
+END;
+
+CREATE TRIGGER checkpoint_checks_no_delete
+BEFORE DELETE ON checkpoint_checks
+BEGIN
+  SELECT RAISE(ABORT, 'a recorded check cannot be removed');
+END;
+
+-- The archived-account rule (design section 12), backed by the database where
+-- the change is financial. The service refuses these first with a readable
+-- 409; these triggers are the backstop against a path that forgets to ask.
+-- Category and note edits, and archiving or reactivating itself, stay allowed.
+CREATE TRIGGER accounts_archived_no_baseline_change
+BEFORE UPDATE OF tracking_start_date, opening_cents ON accounts
+FOR EACH ROW WHEN OLD.archived_at IS NOT NULL AND NEW.archived_at IS NOT NULL AND (
+  NEW.tracking_start_date <> OLD.tracking_start_date
+  OR NEW.opening_cents <> OLD.opening_cents
+)
+BEGIN
+  SELECT RAISE(ABORT, 'archived account: reactivate it before changing its baseline');
+END;
+
+CREATE TRIGGER transactions_archived_no_insert
+BEFORE INSERT ON transactions
+FOR EACH ROW WHEN (SELECT archived_at FROM accounts WHERE id = NEW.account_id) IS NOT NULL
+BEGIN
+  SELECT RAISE(ABORT, 'archived account: reactivate it before adding transactions');
+END;
+
+CREATE TRIGGER transactions_archived_no_financial_change
+BEFORE UPDATE ON transactions
+FOR EACH ROW WHEN (
+  (SELECT archived_at FROM accounts WHERE id = OLD.account_id) IS NOT NULL
+  OR (SELECT archived_at FROM accounts WHERE id = NEW.account_id) IS NOT NULL
+) AND (
+  NEW.account_id <> OLD.account_id
+  OR NEW.posted_date <> OLD.posted_date
+  OR NEW.amount_cents <> OLD.amount_cents
+  OR NEW.kind <> OLD.kind
+  OR NEW.lifecycle <> OLD.lifecycle
+)
+BEGIN
+  SELECT RAISE(ABORT, 'archived account: reactivate it before this repair');
+END;
+
+CREATE TRIGGER checkpoints_archived_no_insert
+BEFORE INSERT ON reconciliation_checkpoints
+FOR EACH ROW WHEN (SELECT archived_at FROM accounts WHERE id = NEW.account_id) IS NOT NULL
+BEGIN
+  SELECT RAISE(ABORT, 'archived account: reactivate it before recording a statement');
+END;
+
+CREATE TRIGGER checkpoint_checks_archived_no_insert
+BEFORE INSERT ON checkpoint_checks
+FOR EACH ROW WHEN (
+  SELECT a.archived_at FROM accounts a
+  JOIN reconciliation_checkpoints c ON c.account_id = a.id
+  WHERE c.id = NEW.checkpoint_id
+) IS NOT NULL
+BEGIN
+  SELECT RAISE(ABORT, 'archived account: reactivate it before rechecking');
+END;
 
 -- History of owner-visible changes.
 --

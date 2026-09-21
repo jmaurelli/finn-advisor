@@ -60,6 +60,22 @@ function assertNotInTheFuture(date: string, today: string, path: string): void {
   }
 }
 
+/**
+ * The contract only requires one character, so a name of nothing but spaces
+ * passes the schema and would then hit the database constraint as a 500.
+ * It is a plain validation failure (stage 2 review).
+ */
+function assertVisibleName(name: string, path: string): void {
+  if (/\S/u.test(name)) return;
+  throw problem({
+    status: 422,
+    code: "validation_failed",
+    title: "Name needed",
+    detail: "Give the account a name.",
+    fieldErrors: [{ path, code: "invalid_value", message: "Enter a name, not only spaces." }],
+  });
+}
+
 function assertKnownDate(value: string, path: string): string {
   try {
     return assertCalendarDate(value);
@@ -101,6 +117,7 @@ export function createAccount(context: CommandContext, input: CreateAccountInput
     });
   }
 
+  assertVisibleName(input.displayName, "/displayName");
   const trackingStartDate = assertKnownDate(input.trackingStartDate, "/trackingStartDate");
   assertNotInTheFuture(trackingStartDate, context.today, "/trackingStartDate");
   const openingCents = parseMoney(input.openingBalance, STORED_BOUND);
@@ -155,6 +172,7 @@ export function updateAccount(
 ): AccountRow {
   const { db, now } = context;
   requireActiveAccount(account);
+  if (patch.displayName !== undefined) assertVisibleName(patch.displayName, "/displayName");
 
   const next = {
     display_name: patch.displayName ?? account.display_name,

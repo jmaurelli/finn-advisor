@@ -25,7 +25,7 @@ import { aggregateMoney } from "../domain/money.js";
 import { balanceAt, lastPostedDate } from "../domain/balances.js";
 import { etag, requireIfMatch, versionMismatch } from "../domain/versions.js";
 import { problem } from "../lib/problem.js";
-import { respond } from "../lib/respond.js";
+import { checkedResponse, respond, sendChecked } from "../lib/respond.js";
 import { requireAtLeastOneProperty, validateBody } from "../lib/validate.js";
 import { requireCsrf, requireSession } from "../middlewares/session.js";
 import {
@@ -80,23 +80,23 @@ export function accountRoutes(deps: AppDependencies): IRouter {
   });
 
   router.post("/accounts", requireSession, requireCsrf, (req, res) => {
-    const body = validateBody(CreateAccountBody, req.body);
+    const body = canonicalId(validateBody(CreateAccountBody, req.body));
 
     const result = withWriteTransaction(deps.db, () => {
       const created = createAccount(context(), body);
       return {
         status: created.status,
-        body: {
+        body: checkedResponse(CreateAccountResponse, {
           account: accountDto(deps.db, created.row, easternDate(deps.clock.now())),
           financeRevision: String(financeRevision(deps.db)),
-        },
+        }),
         version: created.row.version,
       };
     });
 
     res.setHeader("ETag", etag(result.version));
     if (result.status === 201) res.setHeader("Location", `/api/accounts/${body.id}`);
-    respond(res, deps.config, CreateAccountResponse, result.status, result.body);
+    sendChecked(res, result.status, result.body);
   });
 
   router.get("/accounts/:accountId", requireSession, (req, res) => {
@@ -124,16 +124,16 @@ export function accountRoutes(deps: AppDependencies): IRouter {
       const account = expectVersion(requireAccount(deps.db, id), expected);
       const updated = updateAccount(context(), account, patch);
       return {
-        account: accountDto(deps.db, updated, easternDate(deps.clock.now())),
+        body: checkedResponse(UpdateAccountResponse, {
+          account: accountDto(deps.db, updated, easternDate(deps.clock.now())),
+          financeRevision: String(financeRevision(deps.db)),
+        }),
         version: updated.version,
       };
     });
 
     res.setHeader("ETag", etag(result.version));
-    respond(res, deps.config, UpdateAccountResponse, 200, {
-      account: result.account,
-      financeRevision: String(financeRevision(deps.db)),
-    });
+    sendChecked(res, 200, result.body);
   });
 
   router.delete("/accounts/:accountId", requireSession, requireCsrf, (req, res) => {
@@ -160,16 +160,16 @@ export function accountRoutes(deps: AppDependencies): IRouter {
         const account = expectVersion(requireAccount(deps.db, id), expected);
         const changed = setArchived(context(), account, archived);
         return {
-          account: accountDto(deps.db, changed, easternDate(deps.clock.now())),
+          body: checkedResponse(schema, {
+            account: accountDto(deps.db, changed, easternDate(deps.clock.now())),
+            financeRevision: String(financeRevision(deps.db)),
+          }),
           version: changed.version,
         };
       });
 
       res.setHeader("ETag", etag(result.version));
-      respond(res, deps.config, schema, 200, {
-        account: result.account,
-        financeRevision: String(financeRevision(deps.db)),
-      });
+      sendChecked(res, 200, result.body);
     });
   }
 
@@ -200,18 +200,17 @@ export function accountRoutes(deps: AppDependencies): IRouter {
       const account = expectVersion(requireAccount(deps.db, id), expected);
       const outcome = changeBaseline(context(), account, body);
       return {
-        account: accountDto(deps.db, outcome.account, easternDate(deps.clock.now())),
-        postedTransactionIds: outcome.postedTransactionIds,
+        body: checkedResponse(ChangeAccountBaselineResponse, {
+          account: accountDto(deps.db, outcome.account, easternDate(deps.clock.now())),
+          postedTransactionIds: outcome.postedTransactionIds,
+          financeRevision: String(financeRevision(deps.db)),
+        }),
         version: outcome.account.version,
       };
     });
 
     res.setHeader("ETag", etag(result.version));
-    respond(res, deps.config, ChangeAccountBaselineResponse, 200, {
-      account: result.account,
-      postedTransactionIds: result.postedTransactionIds,
-      financeRevision: String(financeRevision(deps.db)),
-    });
+    sendChecked(res, 200, result.body);
   });
 
   router.get("/accounts/:accountId/checkpoints", requireSession, (req, res) => {
@@ -223,7 +222,7 @@ export function accountRoutes(deps: AppDependencies): IRouter {
   });
 
   router.post("/accounts/:accountId/checkpoints", requireSession, requireCsrf, (req, res) => {
-    const body = validateBody(CreateCheckpointBody, req.body);
+    const body = canonicalId(validateBody(CreateCheckpointBody, req.body));
     const id = accountId(req);
 
     const result = withWriteTransaction(deps.db, () => {
@@ -231,16 +230,16 @@ export function accountRoutes(deps: AppDependencies): IRouter {
       const created = createCheckpoint(context(), account, body);
       return {
         status: created.status,
-        checkpoint: checkpointDto(deps.db, account, created.checkpoint),
+        body: checkedResponse(CreateCheckpointResponse, {
+          checkpoint: checkpointDto(deps.db, account, created.checkpoint),
+          financeRevision: String(financeRevision(deps.db)),
+        }),
         version: created.checkpoint.version,
       };
     });
 
     res.setHeader("ETag", etag(result.version));
-    respond(res, deps.config, CreateCheckpointResponse, result.status, {
-      checkpoint: result.checkpoint,
-      financeRevision: String(financeRevision(deps.db)),
-    });
+    sendChecked(res, result.status, result.body);
   });
 
   router.get(
@@ -275,16 +274,16 @@ export function accountRoutes(deps: AppDependencies): IRouter {
         if (checkpoint.version !== expected) throw versionMismatch(checkpoint.version);
         const updated = recheck(context(), account, checkpoint);
         return {
-          checkpoint: checkpointDto(deps.db, account, updated),
+          body: checkedResponse(RecheckCheckpointResponse, {
+            checkpoint: checkpointDto(deps.db, account, updated),
+            financeRevision: String(financeRevision(deps.db)),
+          }),
           version: updated.version,
         };
       });
 
       res.setHeader("ETag", etag(result.version));
-      respond(res, deps.config, RecheckCheckpointResponse, 200, {
-        checkpoint: result.checkpoint,
-        financeRevision: String(financeRevision(deps.db)),
-      });
+      sendChecked(res, 200, result.body);
     },
   );
 
@@ -322,7 +321,7 @@ function pathId(req: Request, name: string): string {
       detail: "There is nothing with that id.",
     });
   }
-  return id;
+  return id.toLowerCase();
 }
 
 function statusFilter(req: Request): string {
@@ -351,7 +350,16 @@ function accountId(req: Request): string {
       detail: "There is no account with that id.",
     });
   }
-  return id;
+  return id.toLowerCase();
+}
+
+/**
+ * Ids are stored in lower case. The contract's `uuid` format accepts either
+ * case, and without this an upper-case id created a second account that the
+ * lower-case spelling of the same id could not find (stage 2 review).
+ */
+function canonicalId<T extends { id: string }>(body: T): T {
+  return { ...body, id: body.id.toLowerCase() };
 }
 
 function expectVersion(account: AccountRow, expected: bigint): AccountRow {

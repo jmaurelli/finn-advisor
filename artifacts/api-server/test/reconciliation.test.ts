@@ -151,6 +151,9 @@ describe("a changed balance never stays reconciled", () => {
     });
 
     postTransaction(api.db, { accountId, postedDate: "2026-05-10", amountMinor: "-5000" });
+    // May's statement can only be recorded once May has ended.
+    api.clock.set(Date.UTC(2026, 5, 2, 13, 55, 0));
+    await api.login(); // a month later the earlier session has expired
     const may = await addCheckpoint("112000", {
       closingDate: "2026-05-31",
       id: uuid(2, "70000000"),

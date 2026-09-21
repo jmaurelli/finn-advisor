@@ -12,9 +12,9 @@ import type { SqliteDatabase } from "@workspace/db";
 import { aggregateMoney } from "../domain/money.js";
 import { balanceAt } from "../domain/balances.js";
 import {
+  compareDates,
   easternDate,
   monthEnd,
-  monthOf,
   monthStart,
   nextMonthStart,
 } from "../domain/dates.js";
@@ -67,10 +67,10 @@ export function monthSummary(db: SqliteDatabase, month: string, nowMs: number): 
 
   const uncategorized = categories.find((row) => row.categoryId === UNCATEGORIZED);
 
-  // The last day of the month, or today when the month is still running: a
-  // summary for the current month should not claim a month-end balance that
-  // has not happened.
-  const balanceDate = monthOf(today) === month ? today : monthEnd(month);
+  // The last day of the month, or today when the month has not ended - the
+  // current month or a future one: a summary should never claim a month-end
+  // balance that has not happened.
+  const balanceDate = compareDates(monthEnd(month), today) > 0 ? today : monthEnd(month);
   const accounts = listAccounts(db, "all").map((row: AccountRow) => {
     const { balance, coverage } = balanceAt(db, baselineOf(row), balanceDate);
     return {

@@ -47,6 +47,11 @@ export interface CheckpointState {
 /**
  * The latest check for every checkpoint on an account, in one query rather
  * than one per checkpoint.
+ *
+ * "Latest" means recorded last, which is insertion order (`rowid`): checks are
+ * append-only, so it only ever grows. Ordering by `checked_at` and then by the
+ * random id picked the older of two same-millisecond checks about half the
+ * time, and would be fooled by a clock stepping back (stage 2 review).
  */
 export function latestChecks(
   db: SqliteDatabase,
@@ -58,7 +63,7 @@ export function latestChecks(
        FROM (
          SELECT id, checkpoint_id, checked_at, calculated_cents, difference_cents, matched,
                 ROW_NUMBER() OVER (
-                  PARTITION BY checkpoint_id ORDER BY checked_at DESC, id DESC
+                  PARTITION BY checkpoint_id ORDER BY rowid DESC
                 ) AS rank_in_checkpoint
          FROM checkpoint_checks
          WHERE checkpoint_id IN (SELECT id FROM reconciliation_checkpoints WHERE account_id = ?)
@@ -75,7 +80,7 @@ export function latestCheck(db: SqliteDatabase, checkpointId: string): CheckRow 
     .prepare(
       `SELECT id, checked_at, calculated_cents, difference_cents, matched
        FROM checkpoint_checks WHERE checkpoint_id = ?
-       ORDER BY checked_at DESC, id DESC LIMIT 1`,
+       ORDER BY rowid DESC LIMIT 1`,
     )
     .get(checkpointId) as CheckRow | undefined;
   return row ?? null;

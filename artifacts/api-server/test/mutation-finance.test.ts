@@ -1,11 +1,14 @@
 /**
  * Deliberate breakage, stage 2.
  *
- * Same purpose as `mutation.test.ts`: each test here disables one of the new
- * safety rules and shows the scenario that should have caught it now behaving
- * differently. What this proves is precise, and worth stating precisely: the
- * behaviour the other tests assert really comes from that guard. It does not
- * re-run the whole suite under each mutation.
+ * Same purpose as `mutation.test.ts`: each test here runs a hand-written
+ * stand-in for a broken rule and shows the scenario behaving differently. What
+ * this proves is narrow: the scenario is sensitive to the rule. It does not
+ * change the real code, and it is not evidence that the rest of the suite
+ * would catch a real bug. The independent stage 2 review showed that
+ * directly: several bugs planted in the real code survived the whole suite.
+ * `review-stage2.test.ts` closes those gaps, and each was checked by planting
+ * the bug in the real code and seeing the suite fail.
  */
 import { describe, expect, it } from "vitest";
 
@@ -178,8 +181,11 @@ describe("if moving the start later did not check for active earlier rows", () =
         )
         .get() as { total: bigint };
       expect(spending.total).toBe(8000n);
-      // Spending says $80 happened; the balance is as if it never did.
-      expect(117000n).toBe(125000n - 8000n);
+      // Spending says $80 happened; the balance counts no movement at all
+      // since the new start, as if it never did.
+      const counted = balanceAt(ledger.db, moved, "2026-04-30").balance! - moved.openingCents;
+      expect(counted).toBe(0n);
+      expect(counted).not.toBe(-spending.total);
     } finally {
       ledger.close();
     }

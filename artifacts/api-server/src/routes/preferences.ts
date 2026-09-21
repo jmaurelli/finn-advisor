@@ -4,7 +4,7 @@ import { GetPreferencesResponse, UpdatePreferencesBody, UpdatePreferencesRespons
 
 import type { AppDependencies } from "../deps.js";
 import { problem } from "../lib/problem.js";
-import { respond } from "../lib/respond.js";
+import { checkedResponse, respond, sendChecked } from "../lib/respond.js";
 import { requireAtLeastOneProperty, validateBody } from "../lib/validate.js";
 import { requireCsrf, requireSession } from "../middlewares/session.js";
 
@@ -51,11 +51,14 @@ export function preferencesRoutes(deps: AppDependencies): IRouter {
           "UPDATE preferences SET display_name = ?, density = ?, version = ?, updated_at = ? WHERE id = 1",
         )
         .run(next.display_name, next.density, next.version, deps.clock.now());
-      return next as PreferencesRow;
+      return {
+        version: next.version,
+        body: checkedResponse(UpdatePreferencesResponse, toBody(next as PreferencesRow)),
+      };
     });
 
     res.setHeader("ETag", etag(saved.version));
-    respond(res, deps.config, UpdatePreferencesResponse, 200, toBody(saved));
+    sendChecked(res, 200, saved.body);
   });
 
   return router;

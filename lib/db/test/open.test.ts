@@ -9,10 +9,12 @@ import { assertExactIntegers, closeLedger, ledgerPath, openLedger } from "../src
 import { createTemporaryLedger, type TemporaryLedger } from "../src/testing.js";
 
 let ledger: TemporaryLedger | undefined;
+const mountinfoDirs: string[] = [];
 
 afterEach(() => {
   ledger?.close();
   ledger = undefined;
+  for (const dir of mountinfoDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
 describe("connection factory", () => {
@@ -169,6 +171,8 @@ describe("filesystem guard", () => {
 
 function writeMountinfo(contents: string): string {
   const dir = mkdtempSync(join(tmpdir(), "money-desk-mounts-"));
+  // Removed after each test; the stage 2 review found these left behind.
+  mountinfoDirs.push(dir);
   const path = join(dir, "mountinfo");
   writeFileSync(path, contents);
   return path;

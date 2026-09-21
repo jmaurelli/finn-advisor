@@ -446,3 +446,125 @@ describe("audit events", () => {
     ).toThrow(/constraint failed/i);
   });
 });
+
+// Added after the independent stage 2 review.
+describe("stage 2 review: limits the contract sets", () => {
+  it("accepts a merchant description of 2,000 characters and refuses 2,001", () => {
+    // The contract and design section 6 allow 2,000; a lower cap here would
+    // reject real bank rows at import time.
+    const db = open();
+    expect(() =>
+      insertTransaction(db, { merchant_text: "M".repeat(2000), normalized_text: "m".repeat(2000) }),
+    ).not.toThrow();
+    expect(() => insertTransaction(db, { merchant_text: "M".repeat(2001) })).toThrow(
+      /constraint failed/i,
+    );
+  });
+
+  it("refuses to change a protected category's fixed id, even directly", () => {
+    // The transaction constraints name the protected ids as literals, so a
+    // changed id would make every income row impossible to write.
+    const db = open();
+    expect(() =>
+      db
+        .prepare("UPDATE categories SET id = '30000000-0000-4000-8000-00000000abcd' WHERE id = ?")
+        .run(INCOME),
+    ).toThrow(/protected category/);
+  });
+});
+
+describe("stage 2 review: checks are append-only", () => {
+  it("refuses to change or remove a recorded check", () => {
+    const db = open();
+    db.prepare(
+      `INSERT INTO reconciliation_checkpoints (id, account_id, closing_date, statement_cents,
+         creation_digest, version, created_at, updated_at)
+       VALUES ('70000000-0000-4000-8000-000000000001', ?, '2026-04-30', 117000, ?, 1,
+         1750000000000, 1750000000000)`,
+    ).run(ACCOUNT, "b".repeat(64));
+    db.prepare(
+      `INSERT INTO checkpoint_checks (id, checkpoint_id, checked_at, calculated_cents,
+         difference_cents, matched)
+       VALUES ('80000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000001',
+         1750000000000, 117000, 0, 1)`,
+    ).run();
+
+    expect(() => db.prepare("UPDATE checkpoint_checks SET checked_at = 1").run()).toThrow(
+      /cannot be changed/,
+    );
+    expect(() => db.prepare("DELETE FROM checkpoint_checks").run()).toThrow(/cannot be removed/);
+  });
+});
+
+describe("stage 2 review: the archived-account rule, backed by the database", () => {
+  function archive(db: SqliteDatabase): void {
+    db.prepare("UPDATE accounts SET archived_at = 1750000000001 WHERE id = ?").run(ACCOUNT);
+  }
+
+  it("refuses a baseline change on an archived account, and allows it once reactivated", () => {
+    const db = open();
+    archive(db);
+    expect(() =>
+      db.prepare("UPDATE accounts SET opening_cents = 1 WHERE id = ?").run(ACCOUNT),
+    ).toThrow(/archived account/);
+    expect(() =>
+      db.prepare("UPDATE accounts SET tracking_start_date = '2026-03-01' WHERE id = ?").run(ACCOUNT),
+    ).toThrow(/archived account/);
+
+    db.prepare("UPDATE accounts SET archived_at = NULL WHERE id = ?").run(ACCOUNT);
+    expect(() =>
+      db.prepare("UPDATE accounts SET opening_cents = 1 WHERE id = ?").run(ACCOUNT),
+    ).not.toThrow();
+  });
+
+  it("refuses new transactions and financial repairs, but allows category and note edits", () => {
+    const db = open();
+    insertTransaction(db, { id: "10000000-0000-4000-8000-00000000a001" });
+    archive(db);
+    const id = "10000000-0000-4000-8000-00000000a001";
+
+    expect(() => insertTransaction(db)).toThrow(/archived account/);
+    for (const change of [
+      "amount_cents = -9000",
+      "posted_date = '2026-04-03'",
+      "lifecycle = 'void'",
+      "kind = 'refund', amount_cents = 8000",
+    ]) {
+      expect(() => db.prepare(`UPDATE transactions SET ${change} WHERE id = ?`).run(id)).toThrow(
+        /archived account/,
+      );
+    }
+
+    // Design section 12: category corrections and note edits stay allowed.
+    expect(() =>
+      db
+        .prepare("UPDATE transactions SET assignment_origin = 'manual', note = 'x' WHERE id = ?")
+        .run(id),
+    ).not.toThrow();
+  });
+
+  it("refuses a new statement or a new check on an archived account", () => {
+    const db = open();
+    const checkpoint = (id: string): void => {
+      db.prepare(
+        `INSERT INTO reconciliation_checkpoints (id, account_id, closing_date, statement_cents,
+           creation_digest, version, created_at, updated_at)
+         VALUES (?, ?, '2026-04-30', 117000, ?, 1, 1750000000000, 1750000000000)`,
+      ).run(id, ACCOUNT, "b".repeat(64));
+    };
+    checkpoint("70000000-0000-4000-8000-000000000001");
+    archive(db);
+
+    expect(() => checkpoint("70000000-0000-4000-8000-000000000002")).toThrow(/archived account/);
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO checkpoint_checks (id, checkpoint_id, checked_at, calculated_cents,
+             difference_cents, matched)
+           VALUES ('80000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000001',
+             1750000000000, 117000, 0, 1)`,
+        )
+        .run(),
+    ).toThrow(/archived account/);
+  });
+});

@@ -99,7 +99,7 @@ export function createCheckpoint(
   }
 
   requireActiveAccount(account);
-  const closingDate = requireClosingDate(input.closingDate, account);
+  const closingDate = requireClosingDate(input.closingDate, account, context.today);
 
   db.prepare(
     `INSERT INTO reconciliation_checkpoints (id, account_id, closing_date, statement_cents,
@@ -188,9 +188,11 @@ export function recheck(
 /**
  * A statement cannot close before the account's records begin. The day before
  * the tracking start is allowed: that day's closing balance is exactly the
- * opening balance.
+ * opening balance. Nor can it close after today: a statement for a day still
+ * to come would show "reconciled" against a balance that has not happened
+ * (owner decision, stage 2 review).
  */
-function requireClosingDate(value: string, account: AccountRow): string {
+function requireClosingDate(value: string, account: AccountRow, today: string): string {
   let closingDate: string;
   try {
     closingDate = assertCalendarDate(value);
@@ -201,6 +203,9 @@ function requireClosingDate(value: string, account: AccountRow): string {
     throw closingDateProblem(
       "This account's records start later than that statement's closing date.",
     );
+  }
+  if (compareDates(closingDate, today) > 0) {
+    throw closingDateProblem("A statement cannot close after today.");
   }
   return closingDate;
 }
@@ -264,7 +269,7 @@ export function checkpointHistory(
     .prepare(
       `SELECT id, checked_at, calculated_cents, difference_cents, matched
        FROM checkpoint_checks WHERE checkpoint_id = ?
-       ORDER BY checked_at DESC, id DESC`,
+       ORDER BY rowid DESC`,
     )
     .all(checkpoint.id) as CheckRow[];
 
