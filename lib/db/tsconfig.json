@@ -5,8 +5,10 @@
     "declarationMap": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
-    "rootDir": "src",
-    "types": ["node"]
+    "rootDir": ".",
+    "types": ["node"],
+    "allowImportingTsExtensions": false,
+    "moduleResolution": "bundler"
   },
-  "include": ["src"]
+  "include": ["src", "test", "vitest.config.ts"]
 }

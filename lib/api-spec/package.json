@@ -3,9 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "codegen": "orval --config ./orval.config.ts && pnpm -w run typecheck:libs"
+    "lint": "redocly lint openapi.yaml",
+    "validate": "node scripts/validate-contract.mjs",
+    "codegen": "orval --config ./orval.config.ts && pnpm -w run typecheck:libs",
+    "check:generated": "tsx scripts/check-generated-zod.ts",
+    "check": "pnpm run lint && pnpm run validate && pnpm run codegen && pnpm run check:generated"
   },
   "devDependencies": {
-    "orval": "^8.30.0"
+    "@redocly/cli": "2.53.2",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "orval": "^8.30.0",
+    "tsx": "catalog:",
+    "yaml": "2.9.0"
   }
 }
