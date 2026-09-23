@@ -2,7 +2,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import cookieParser from "cookie-parser";
 import { DatabaseBusyError } from "@workspace/db";
 
-import { MAX_JSON_BODY_BYTES } from "./config.js";
+import { LIST_BODY_PATHS, MAX_JSON_BODY_BYTES, MAX_LIST_BODY_BYTES } from "./config.js";
 import type { AppDependencies } from "./deps.js";
 import { ProblemError, sendProblem } from "./lib/problem.js";
 import { securityHeaders } from "./lib/security.js";
@@ -14,10 +14,14 @@ import {
 } from "./middlewares/context.js";
 import { attachSession } from "./middlewares/session.js";
 import { accountRoutes } from "./routes/accounts.js";
+import { categoryRoutes } from "./routes/categories.js";
 import { healthRoutes } from "./routes/health.js";
+import { linkRoutes } from "./routes/links.js";
 import { preferencesRoutes } from "./routes/preferences.js";
+import { ruleRoutes } from "./routes/rules.js";
 import { sessionRoutes } from "./routes/session.js";
 import { summaryRoutes } from "./routes/summary.js";
+import { transactionRoutes } from "./routes/transactions.js";
 import { accessLog, logger } from "./lib/logger.js";
 
 export function createApp(deps: AppDependencies): Express {
@@ -38,14 +42,23 @@ export function createApp(deps: AppDependencies): Express {
   // Origin before the parser: a cross-origin write should be refused without
   // buffering its body first.
   api.use(requireSameOrigin(deps));
-  api.use(express.json({ limit: MAX_JSON_BODY_BYTES, strict: true, type: "application/json" }));
+  // The session lookup reads only the cookie, so it can run first: only a
+  // signed-in owner gets the larger bound on the two list-carrying routes.
   api.use(attachSession(deps));
+  const json = express.json({ limit: MAX_JSON_BODY_BYTES, strict: true, type: "application/json" });
+  const listJson = express.json({ limit: MAX_LIST_BODY_BYTES, strict: true, type: "application/json" });
+  api.use((req: Request, res: Response, next: NextFunction) =>
+    (req.session !== undefined && LIST_BODY_PATHS.some(path => path.test(req.path)) ? listJson : json)(req, res, next));
 
   api.use(healthRoutes(deps));
   api.use(sessionRoutes(deps));
   api.use(preferencesRoutes(deps));
   api.use(accountRoutes(deps));
+  api.use(categoryRoutes(deps));
+  api.use(ruleRoutes(deps));
   api.use(summaryRoutes(deps));
+  api.use(transactionRoutes(deps));
+  api.use(linkRoutes(deps));
 
   // Anything unmatched under /api is a problem document, never Express's HTML.
   api.use((_req: Request, res: Response, next: NextFunction) => {

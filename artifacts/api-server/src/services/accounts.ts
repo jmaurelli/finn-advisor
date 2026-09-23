@@ -19,6 +19,7 @@ import {
   bumpFinanceRevision,
   findAccount,
   requireActiveAccount,
+  requireUnusedEntityId,
   writeAudit,
   type AccountRow,
 } from "./ledger.js";
@@ -95,6 +96,9 @@ export function createAccount(context: CommandContext, input: CreateAccountInput
   row: AccountRow;
 } {
   const { db, now } = context;
+  // Canonical here as well as at the route, so the stored row, its audit
+  // evidence and the used-id guard cannot disagree about which id this is.
+  const id = input.id.toLowerCase();
   const digest = creationDigest({
     kind: input.kind,
     providerKey: input.providerKey,
@@ -106,7 +110,7 @@ export function createAccount(context: CommandContext, input: CreateAccountInput
 
   // A retry of a create the owner already made returns what it made. The same
   // id with different content is a genuine conflict, not a retry.
-  const existing = findAccount(db, input.id);
+  const existing = findAccount(db, id);
   if (existing !== undefined) {
     if (existing.creation_digest === digest) return { status: 200, row: existing };
     throw problem({
@@ -117,6 +121,8 @@ export function createAccount(context: CommandContext, input: CreateAccountInput
     });
   }
 
+  requireUnusedEntityId(db, "account", id,
+    "This id belonged to an account that was later deleted. Use a new id to add it again.");
   assertVisibleName(input.displayName, "/displayName");
   const trackingStartDate = assertKnownDate(input.trackingStartDate, "/trackingStartDate");
   assertNotInTheFuture(trackingStartDate, context.today, "/trackingStartDate");
@@ -128,7 +134,7 @@ export function createAccount(context: CommandContext, input: CreateAccountInput
        ledger_revision, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, 0, ?, ?)`,
   ).run(
-    input.id,
+    id,
     input.kind,
     input.providerKey,
     input.displayName,
@@ -142,8 +148,8 @@ export function createAccount(context: CommandContext, input: CreateAccountInput
 
   writeAudit(db, context.newId, now, {
     entityType: "account",
-    entityId: input.id,
-    accountId: input.id,
+    entityId: id,
+    accountId: id,
     eventType: "account_created",
     after: {
       kind: input.kind,
@@ -154,7 +160,7 @@ export function createAccount(context: CommandContext, input: CreateAccountInput
   });
   bumpFinanceRevision(db);
 
-  const row = findAccount(db, input.id);
+  const row = findAccount(db, id);
   if (row === undefined) throw new Error("account disappeared immediately after insert");
   return { status: 201, row };
 }
@@ -260,8 +266,8 @@ export function setArchived(
  * own creation deliberately do not block, which is why they carry the account
  * id as a plain recorded string with no foreign key.
  *
- * The kinds this stage cannot check yet - imports, account-scoped rules,
- * transfer legs, source identities - are declared in `pending-stages.ts` and
+ * The kinds this stage cannot check yet - imports and source identities -
+ * are declared in `pending-stages.ts` and
  * guarded by a test that fails as soon as their tables exist.
  */
 export function blockingReferences(db: SqliteDatabase, accountId: string): BlockingReference[] {
@@ -299,11 +305,29 @@ export function blockingReferences(db: SqliteDatabase, accountId: string): Block
     });
   }
 
+  const ruleRows = db.prepare(
+    "SELECT DISTINCT rule_id AS id FROM rule_revisions WHERE account_id = ? ORDER BY rule_id",
+  ).all(accountId) as { id: string }[];
+  if (ruleRows.length > 0) {
+    blocking.push({ kind: "rule", count: ruleRows.length, ids: ruleRows.slice(0, 20).map((row) => row.id) });
+  }
+  const legs = db.prepare(
+    `SELECT l.transaction_id AS id FROM transfer_legs l
+     JOIN transactions t ON t.id = l.transaction_id WHERE t.account_id = ? ORDER BY l.transaction_id`,
+  ).all(accountId) as { id: string }[];
+  if (legs.length > 0) {
+    blocking.push({ kind: "transfer_leg", count: legs.length, ids: legs.slice(0, 20).map((row) => row.id) });
+  }
+
   return blocking;
 }
 
 export function deleteAccount(context: CommandContext, account: AccountRow): void {
   const { db, now } = context;
+  if (db.prepare("SELECT 1 FROM rule_runs WHERE json_extract(preview_json, '$.scope.accountId') = ? LIMIT 1").get(account.id) !== undefined) {
+    throw problem({ status: 409, code: "account_in_use", title: "Account has saved reviews",
+      detail: "A saved rule-run scope still refers to this account. Archive it instead." });
+  }
   const blocking = blockingReferences(db, account.id);
   if (blocking.length > 0) {
     throw problem({

@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createTemporaryLedger, type TemporaryLedger } from "../src/testing.js";
 import type { SqliteDatabase } from "../src/open.js";
+import { EXPECTED_SCHEMA_VERSION } from "../src/migrate.js";
 
 const UNCATEGORIZED = "30000000-0000-4000-8000-000000000000";
 const INCOME = "30000000-0000-4000-8000-000000000001";
@@ -79,15 +80,16 @@ function insertTransaction(db: SqliteDatabase, overrides: Record<string, unknown
   db.prepare(
     `INSERT INTO transactions (id, account_id, posted_date, merchant_text, normalized_text,
        amount_cents, kind, category_id, assignment_origin, note, lifecycle, version,
-       created_at, updated_at)
+       created_at, updated_at, assigned_at, original_posted_date, original_amount_cents, voided_at)
      VALUES (@id, @account_id, @posted_date, @merchant_text, @normalized_text,
        @amount_cents, @kind, @category_id, @assignment_origin, @note, @lifecycle, @version,
-       @created_at, @updated_at)`,
+       @created_at, @updated_at, @updated_at, @posted_date, @amount_cents,
+       CASE WHEN @lifecycle = 'void' THEN @updated_at ELSE NULL END)`,
   ).run(row);
 }
 
 describe("the migration itself", () => {
-  it("creates the finance tables and records schema version 2", () => {
+  it("creates the finance tables and records the expected schema version", () => {
     ledger = createTemporaryLedger();
     const { db } = ledger;
     const names = (
@@ -106,7 +108,7 @@ describe("the migration itself", () => {
     expect(db.pragma("foreign_key_check")).toEqual([]);
     expect(
       db.prepare("SELECT schema_version FROM ledger_metadata WHERE id = 1").get(),
-    ).toEqual({ schema_version: 2n });
+    ).toEqual({ schema_version: BigInt(EXPECTED_SCHEMA_VERSION) });
   });
 
   it("leaves foreign key enforcement ON afterwards", () => {
@@ -273,7 +275,7 @@ describe("transaction kind, sign and category constraints", () => {
     ],
     [
       "a refund",
-      { kind: "refund", amount_cents: 2500n, assignment_origin: "rule" },
+      { kind: "refund", amount_cents: 2500n, assignment_origin: "unassigned" },
     ],
     [
       "income in the Income category",

@@ -2,8 +2,8 @@
  * Things this stage cannot compute yet, and the table that will make each of
  * them computable.
  *
- * Stage 2 has accounts, transactions and reconciliation. It does not have
- * imports, rules or transfer pairs, so a handful of counts and checks have no
+ * Stage 3 has accounts, transactions, rules, links and reconciliation. It does not have
+ * imports or budgets, so a handful of counts and checks have no
  * data to work from and report zero or nothing. That is honest today and
  * wrong the moment the missing tables arrive.
  *
@@ -34,23 +34,28 @@ export const PENDING_PLACEHOLDERS: PendingPlaceholder[] = [
     stage: "5 (durable imports)",
   },
   {
-    table: "transfer_legs",
-    where: "summary review counts: unmatchedTransferCount reports 0",
-    stage: "3 (transfers and links)",
+    table: "budget_plans",
+    where: "category lifecycle: budget references, archive plan impact and stop await stage 4",
+    stage: "4 (recurring budgets)",
   },
   {
-    table: "transfer_legs",
-    where: "account deletion: the transfer_leg blocking reference is not checked",
-    stage: "3 (transfers and links)",
+    table: "budget_schedule",
+    where: "category archive: future schedule stop and reactivation without restart await stage 4",
+    stage: "4 (recurring budgets)",
   },
   {
-    table: "rules",
-    where: "account deletion: the account-scoped rule blocking reference is not checked",
-    stage: "3 (categories and rules)",
+    table: "budget_exceptions",
+    where: "category archive: removal and impact of future monthly entries await stage 4",
+    stage: "4 (recurring budgets)",
   },
   {
     table: "import_batches",
     where: "account deletion: the import blocking reference is not checked",
+    stage: "5 (durable imports)",
+  },
+  {
+    table: "import_rows",
+    where: "category deletion: retained import-row category references await stage 5",
     stage: "5 (durable imports)",
   },
   {

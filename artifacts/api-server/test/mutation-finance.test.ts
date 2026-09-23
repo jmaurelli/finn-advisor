@@ -42,9 +42,9 @@ function post(
   db.prepare(
     `INSERT INTO transactions (id, account_id, posted_date, merchant_text, normalized_text,
        amount_cents, kind, category_id, assignment_origin, note, lifecycle, version,
-       created_at, updated_at)
+       created_at, updated_at, assigned_at, original_posted_date, original_amount_cents, voided_at)
      VALUES (?, ?, ?, 'SYNTHETIC', 'synthetic', ?, 'purchase', ?, 'unassigned', NULL, ?, 1,
-       1750000000000, 1750000000000)`,
+       1750000000000, 1750000000000, 1750000000000, ?, ?, ?)`,
   ).run(
     `10000000-0000-4000-8000-${String(tag).padStart(12, "0")}`,
     ACCOUNT,
@@ -52,6 +52,9 @@ function post(
     amount,
     UNCATEGORIZED,
     lifecycle,
+    postedDate,
+    amount,
+    lifecycle === "void" ? 1750000000000 : null,
   );
 }
 
@@ -118,9 +121,9 @@ describe("if TOTAL() were used instead of SUM()", () => {
       const insert = ledger.db.prepare(
         `INSERT INTO transactions (id, account_id, posted_date, merchant_text, normalized_text,
            amount_cents, kind, category_id, assignment_origin, note, lifecycle, version,
-           created_at, updated_at)
+           created_at, updated_at, assigned_at, original_posted_date, original_amount_cents)
          VALUES (?, ?, '2026-04-02', 'SYNTHETIC', 'synthetic', ?, 'refund', ?, 'manual', NULL,
-           'active', 1, 1750000000000, 1750000000000)`,
+           'active', 1, 1750000000000, 1750000000000, 1750000000000, '2026-04-02', ?)`,
       );
       ledger.db.exec("BEGIN IMMEDIATE");
       for (let index = 0; index < rows; index += 1) {
@@ -129,9 +132,10 @@ describe("if TOTAL() were used instead of SUM()", () => {
           ACCOUNT,
           each,
           UNCATEGORIZED,
+          each,
         );
       }
-      insert.run(`10000000-0000-4000-9000-${String(rows).padStart(12, "0")}`, ACCOUNT, 1n, UNCATEGORIZED);
+      insert.run(`10000000-0000-4000-9000-${String(rows).padStart(12, "0")}`, ACCOUNT, 1n, UNCATEGORIZED, 1n);
       ledger.db.exec("COMMIT");
 
       const expected = each * BigInt(rows) + 1n + 125000n;

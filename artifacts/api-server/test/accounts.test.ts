@@ -59,6 +59,19 @@ describe("creating an account", () => {
     expect((conflicting.response.body as { code: string }).code).toBe("client_id_conflict");
   });
 
+  it("keeps a deleted account deleted when the original create is retried", async () => {
+    const { id, etag } = await createAccount(api);
+    expect((await api.request(`/api/accounts/${id}`, { method: "DELETE", headers: { "if-match": etag } })).status).toBe(204);
+    expect((await api.request(`/api/accounts/${id}`)).status).toBe(404);
+    // Retrying the original create must not restore the account or its opening balance.
+    const replay = await createAccount(api);
+    expect(replay.response.status).toBe(409);
+    expect((replay.response.body as { code: string }).code).toBe("client_id_conflict");
+    expect((await api.request(`/api/accounts/${id}`)).status).toBe(404);
+    expect((await api.request("/api/accounts")).body).toMatchObject({ items: [] });
+    expect((await createAccount(api, { id: uuid(92) })).response.status).toBe(201);
+  });
+
   it("refuses a tracking start in the future, so no balance is ever a guess", async () => {
     const { response } = await createAccount(api, { trackingStartDate: "2027-01-01" });
     expect(response.status).toBe(422);
@@ -400,7 +413,7 @@ describe("the forward guard for later stages", () => {
 
   it("declares a placeholder for every count the summary cannot compute yet", () => {
     const declared = PENDING_PLACEHOLDERS.map((entry) => entry.where);
-    for (const count of ["openImportCount", "heldImportRowCount", "unmatchedTransferCount"]) {
+    for (const count of ["openImportCount", "heldImportRowCount"]) {
       expect(declared.some((where) => where.includes(count))).toBe(true);
     }
   });

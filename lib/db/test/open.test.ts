@@ -23,6 +23,7 @@ describe("connection factory", () => {
     const { db } = ledger;
 
     expect(db.pragma("foreign_keys", { simple: true })).toBe(1n);
+    expect(db.pragma("recursive_triggers", { simple: true })).toBe(1n);
     expect(db.pragma("journal_mode", { simple: true })).toBe("wal");
     expect(db.pragma("synchronous", { simple: true })).toBe(2n);
     expect(db.pragma("busy_timeout", { simple: true })).toBe(250n);

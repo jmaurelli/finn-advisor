@@ -1,17 +1,25 @@
 /**
  * Helpers for the finance tests.
  *
- * Transactions are inserted directly, because the commands that create them
- * are stage 3. That is deliberate and it is also a limit worth stating: these
- * tests prove the balance and reconciliation arithmetic, not the posting path
- * that will produce those rows later.
+ * Older arithmetic/schema tests retain the direct-SQL fixture below. New
+ * Stage 3 acceptance scenarios use postThroughService, the real posting path.
  */
-import type { SqliteDatabase } from "@workspace/db";
+import { withWriteTransaction, type SqliteDatabase } from "@workspace/db";
+import { easternDate } from "../src/domain/dates.js";
+import type { PostingInput } from "../src/lib/transaction-schemas.js";
+import { postTransaction as postMovement } from "../src/services/posting.js";
 
 import type { TestServer, TestResponse } from "./harness.js";
 
 export const UNCATEGORIZED = "30000000-0000-4000-8000-000000000000";
 export const INCOME_CATEGORY = "30000000-0000-4000-8000-000000000001";
+
+/** Stage 3 acceptance tests use the real posting service, not the legacy SQL fixture. */
+export function postThroughService(api: TestServer, input: PostingInput) {
+  return withWriteTransaction(api.db, () => postMovement({
+    db: api.db, now: api.clock.now(), today: easternDate(api.clock.now()), newId: api.deps.newId,
+  }, input));
+}
 
 export function uuid(tag: number, prefix = "20000000"): string {
   return `${prefix}-0000-4000-8000-${String(tag).padStart(12, "0")}`;
@@ -61,7 +69,7 @@ export interface SyntheticTransaction {
   merchant?: string;
 }
 
-/** Writes a transaction straight into the ledger, as a future import will. */
+/** Legacy SQL fixture: not evidence that application posting commands work. */
 export function postTransaction(db: SqliteDatabase, input: SyntheticTransaction): string {
   transactionCounter += 1;
   const kind = input.kind ?? "purchase";
@@ -80,8 +88,9 @@ export function postTransaction(db: SqliteDatabase, input: SyntheticTransaction)
   db.prepare(
     `INSERT INTO transactions (id, account_id, posted_date, merchant_text, normalized_text,
        amount_cents, kind, category_id, assignment_origin, note, lifecycle, version,
-       created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, 1750000000000, 1750000000000)`,
+       created_at, updated_at, assigned_at, original_posted_date, original_amount_cents, voided_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, 1750000000000, 1750000000000,
+       1750000000000, ?, ?, ?)`,
   ).run(
     id,
     input.accountId,
@@ -93,6 +102,9 @@ export function postTransaction(db: SqliteDatabase, input: SyntheticTransaction)
     categoryId,
     origin,
     input.lifecycle ?? "active",
+    input.postedDate,
+    BigInt(input.amountMinor),
+    input.lifecycle === "void" ? 1750000000000 : null,
   );
   return id;
 }

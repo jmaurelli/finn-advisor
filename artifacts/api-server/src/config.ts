@@ -21,6 +21,14 @@ export const SESSION_COOKIE_NAME = "__Host-money_desk_session";
 export const SESSION_IDLE_MS = 30 * 60 * 1000;
 export const SESSION_ABSOLUTE_MS = 12 * 60 * 60 * 1000;
 export const MAX_JSON_BODY_BYTES = 64 * 1024;
+/**
+ * The contract lets a reorder list 2,000 rule ids and a category archive carry
+ * 1,000 rule resolutions; compactly serialized those need about 78 KB and
+ * 123 KB. Only those two routes get this larger bound.
+ */
+export const MAX_LIST_BODY_BYTES = 256 * 1024;
+// Case-insensitive with an optional trailing slash, as Express routes them.
+export const LIST_BODY_PATHS = [/^\/rules\/reorder\/?$/i, /^\/categories\/[^/]+\/archive\/?$/i];
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const environment = readEnvironment(env);

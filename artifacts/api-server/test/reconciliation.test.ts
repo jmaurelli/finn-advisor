@@ -265,7 +265,7 @@ describe("rechecking", () => {
       postedDate: "2026-04-15",
       amountMinor: "-2500",
     });
-    api.db.prepare("UPDATE transactions SET lifecycle = 'void' WHERE id = ?").run(extra);
+    api.db.prepare("UPDATE transactions SET lifecycle = 'void', voided_at = 1750000000000 WHERE id = ?").run(extra);
 
     api.clock.advance(60_000);
     const response = await api.request(

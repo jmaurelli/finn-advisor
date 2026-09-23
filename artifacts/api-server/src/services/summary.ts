@@ -111,8 +111,7 @@ export function monthSummary(db: SqliteDatabase, month: string, nowMs: number): 
 /**
  * Counts for the review badges.
  *
- * Three of these have no data to count yet: imports arrive in stage 5 and
- * transfer pairs in stage 3. They report 0, and each is declared in
+ * Import counts have no data to count until stage 5. They report 0, and each is declared in
  * `pending-stages.ts` with the table that will make it real, guarded by a test
  * that fails the moment that table exists.
  */
@@ -132,12 +131,18 @@ function reviewCounts(db: SqliteDatabase): Record<string, number> {
     differenceCount += summary.differenceCount;
   }
 
+  const unmatched = db.prepare(
+    `SELECT COUNT(*) AS n FROM transactions t
+     WHERE t.lifecycle = 'active' AND t.kind = 'transfer'
+       AND NOT EXISTS (SELECT 1 FROM transfer_legs l WHERE l.transaction_id = t.id)`,
+  ).get() as { n: bigint };
+
   return {
     uncategorizedCount: Number(uncategorizedCount.n),
     openImportCount: 0,
     heldImportRowCount: 0,
     needsRecheckCount,
     differenceCount,
-    unmatchedTransferCount: 0,
+    unmatchedTransferCount: Number(unmatched.n),
   };
 }

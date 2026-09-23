@@ -56,12 +56,23 @@ export function openLedger(options: OpenLedgerOptions): SqliteDatabase {
   const db = new BetterSqlite3(ledgerPath(dataDir));
   try {
     db.defaultSafeIntegers(true);
+    // SQLite length(TEXT) stops at NUL; the API contract counts all code points.
+    // Register before migrations or schema checks, including on reopened ledgers.
+    db.function("codepoint_length", { deterministic: true }, (value: unknown) => {
+      if (value === null) return null;
+      if (typeof value !== "string") throw new TypeError("codepoint_length requires text");
+      return [...value].length;
+    });
     db.pragma("foreign_keys = ON");
+    // REPLACE deletes conflicting rows; those deletes bypass history guards
+    // unless recursive triggers are enabled on this connection.
+    db.pragma("recursive_triggers = ON");
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = FULL");
     db.pragma(`busy_timeout = ${openTimeoutMs}`);
 
     assertPragma(db, "foreign_keys", 1n);
+    assertPragma(db, "recursive_triggers", 1n);
     assertPragma(db, "journal_mode", "wal");
     assertPragma(db, "synchronous", 2n);
     assertExactIntegers(db);

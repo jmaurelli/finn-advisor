@@ -157,7 +157,7 @@ export function accountDto(db: SqliteDatabase, row: AccountRow, today: string): 
 }
 
 export interface AuditEntry {
-  entityType: "account" | "transaction" | "category" | "checkpoint";
+  entityType: "account" | "transaction" | "category" | "checkpoint" | "rule" | "transfer_pair" | "refund_link";
   entityId: string;
   accountId?: string | null;
   eventType: string;
@@ -165,6 +165,30 @@ export interface AuditEntry {
   reason?: string | null;
   before?: unknown;
   after?: unknown;
+}
+
+/**
+ * A client id is used up once it has been created, even after the record is
+ * deleted: otherwise a late retry of the original create would silently bring
+ * back something the owner deliberately removed, opening balance and all. The
+ * append-only audit history is the durable record of every id ever used.
+ */
+export function requireUnusedEntityId(
+  db: SqliteDatabase,
+  entityType: AuditEntry["entityType"],
+  id: string,
+  detail: string,
+): void {
+  const used = db
+    .prepare("SELECT 1 FROM audit_events WHERE entity_type = ? AND entity_id = ? LIMIT 1")
+    .get(entityType, id.toLowerCase());
+  if (used === undefined) return;
+  throw problem({
+    status: 409,
+    code: "client_id_conflict",
+    title: "Already used for something else",
+    detail,
+  });
 }
 
 export function writeAudit(

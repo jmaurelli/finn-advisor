@@ -8,6 +8,8 @@ import type { Request, Response } from "express";
  */
 export type ProblemCode =
   | "invalid_request"
+  | "invalid_cursor"
+  | "cursor_filter_mismatch"
   | "not_authenticated"
   | "session_expired"
   | "invalid_credentials"
@@ -18,8 +20,20 @@ export type ProblemCode =
   | "reactivation_required"
   | "account_in_use"
   | "active_transactions_before_start"
+  | "category_archived"
   | "category_protected"
   | "category_in_use"
+  | "category_name_taken"
+  | "rule_set_changed"
+  | "rule_target_ineligible"
+  | "transfer_pair_linked"
+  | "refund_already_linked"
+  | "unlink_confirmation_required"
+  | "kind_change_confirmation_required"
+  | "kind_sign_mismatch"
+  | "preview_stale"
+  | "preview_expired"
+  | "scope_too_large"
   | "version_mismatch"
   | "precondition_required"
   | "validation_failed"
@@ -64,6 +78,8 @@ export interface ProblemOptions {
   blocking?: BlockingReference[];
   currentVersion?: string;
   retryAfterSeconds?: number;
+  /** Exactly the links a change would invalidate, for the owner to confirm. */
+  requiredUnlinks?: { transferPairIds: string[]; refundLinkIds: string[] };
 }
 
 export class ProblemError extends Error {
@@ -94,6 +110,7 @@ export function sendProblem(req: Request, res: Response, options: ProblemOptions
   if (options.blocking !== undefined && options.blocking.length > 0) {
     body["blocking"] = options.blocking.slice(0, 20);
   }
+  if (options.requiredUnlinks !== undefined) body["requiredUnlinks"] = options.requiredUnlinks;
   if (options.currentVersion !== undefined) body["currentVersion"] = options.currentVersion;
   if (options.retryAfterSeconds !== undefined) {
     body["retryAfterSeconds"] = options.retryAfterSeconds;

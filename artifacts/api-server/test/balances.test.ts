@@ -85,10 +85,10 @@ describe("the balance at a date", () => {
     const insert = api.db.prepare(
       `INSERT INTO transactions (id, account_id, posted_date, merchant_text, normalized_text,
          amount_cents, kind, category_id, assignment_origin, note, lifecycle, version,
-         created_at, updated_at)
+         created_at, updated_at, assigned_at, original_posted_date, original_amount_cents)
        VALUES (?, ?, '2026-04-02', 'SYNTHETIC BULK', 'synthetic bulk', ?, 'refund',
          '30000000-0000-4000-8000-000000000000', 'manual', NULL, 'active', 1,
-         1750000000000, 1750000000000)`,
+         1750000000000, 1750000000000, 1750000000000, '2026-04-02', 99999999999)`,
     );
     api.db.exec("BEGIN IMMEDIATE");
     for (let index = 0; index < rows; index += 1) {
@@ -98,6 +98,8 @@ describe("the balance at a date", () => {
 
     const total = each * BigInt(rows);
     expect(total).toBeGreaterThan(BigInt(Number.MAX_SAFE_INTEGER));
+    // The synchronous fixture can outlive the harness socket's idle timeout.
+    await api.request("/api/session").catch(() => undefined);
     const reported = balanceOf((await balance(id, "2026-04-30")) as never);
     expect(reported).toBe(total.toString());
     expect(BigInt(reported ?? "0")).toBe(total);
