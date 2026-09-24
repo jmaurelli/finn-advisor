@@ -32,6 +32,8 @@ export type ProblemCode =
   | "kind_change_confirmation_required"
   | "kind_sign_mismatch"
   | "preview_stale"
+  | "month_in_past"
+  | "budget_ineligible_category"
   | "preview_expired"
   | "scope_too_large"
   | "version_mismatch"

@@ -112,7 +112,7 @@ describe("populated schema-2 upgrades", () => {
       .run(id(90), id(1), id(1), NOW);
     const before = db.prepare("SELECT * FROM transactions").get() as Record<string, unknown>;
     const auditBefore = db.prepare("SELECT * FROM audit_events").all();
-    expect(migrate(db).appliedNow).toEqual(["0003_transactions_rules.sql"]);
+    expect(migrate(db).appliedNow).toEqual(["0003_transactions_rules.sql", "0004_budgets.sql"]);
     expect(db.prepare("SELECT * FROM transactions").get()).toMatchObject({
       ...before, assigned_at: BigInt(NOW), voided_at: lifecycle === "void" ? BigInt(NOW) : null,
       original_posted_date: "2026-02-01", original_amount_cents: -12345n, rule_id: null, rule_revision: null,

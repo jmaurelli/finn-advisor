@@ -10,7 +10,7 @@ import type { SqliteDatabase } from "./open.js";
  * The schema this build of the application expects. Readiness compares it with
  * what is actually applied; a mismatch is reported instead of guessed at.
  */
-export const EXPECTED_SCHEMA_VERSION = 3;
+export const EXPECTED_SCHEMA_VERSION = 4;
 
 const MIGRATION_FILE_PATTERN = /^(\d{4})_[a-z0-9_]+\.sql$/;
 

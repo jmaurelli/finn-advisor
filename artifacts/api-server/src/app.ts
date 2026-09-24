@@ -14,6 +14,7 @@ import {
 } from "./middlewares/context.js";
 import { attachSession } from "./middlewares/session.js";
 import { accountRoutes } from "./routes/accounts.js";
+import { budgetRoutes } from "./routes/budgets.js";
 import { categoryRoutes } from "./routes/categories.js";
 import { healthRoutes } from "./routes/health.js";
 import { linkRoutes } from "./routes/links.js";
@@ -55,6 +56,7 @@ export function createApp(deps: AppDependencies): Express {
   api.use(preferencesRoutes(deps));
   api.use(accountRoutes(deps));
   api.use(categoryRoutes(deps));
+  api.use(budgetRoutes(deps));
   api.use(ruleRoutes(deps));
   api.use(summaryRoutes(deps));
   api.use(transactionRoutes(deps));

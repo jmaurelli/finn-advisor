@@ -1,10 +1,10 @@
 import type { SqliteDatabase } from "@workspace/db";
-import { monthOf, nextMonthStart } from "../domain/dates.js";
 import { creationDigest } from "../domain/digest.js";
 import { nextCounter } from "../domain/versions.js";
 import { isoTimestamp } from "../lib/clock.js";
 import { problem, type BlockingReference } from "../lib/problem.js";
 import type { CommandContext } from "./accounts.js";
+import { budgetArchiveImpact, budgetPlanDto, budgetPlanVersion, stopBudgetForArchive } from "./budget-plans.js";
 import { bumpFinanceRevision, requireUnusedEntityId, writeAudit } from "./ledger.js";
 import {
   activeRules, bumpRuleSetRevision, configOf, requireRevisionRoom, requireRuleSetRevision, requireRuleTarget,
@@ -134,6 +134,10 @@ export function updateCategory(context: CommandContext, row: CategoryRow, patch:
 
 export function categoryReferences(db: SqliteDatabase, id: string): BlockingReference[] {
   const blocking: BlockingReference[] = [];
+  if (budgetPlanVersion(db, id) !== null || db.prepare("SELECT 1 FROM budget_previews WHERE category_id = ? LIMIT 1").get(id)) {
+    throw problem({ status: 409, code: "category_in_use", title: "Category has budget history",
+      detail: "A retained budget plan or review refers to this category. Archive it instead." });
+  }
   // History and reviewed proposals retain references even after the current assignment changes.
   const transactions = db.prepare(`SELECT id FROM transactions WHERE category_id = ?
     UNION SELECT transaction_id FROM assignment_events WHERE before_category_id = ? OR after_category_id = ?
@@ -178,16 +182,6 @@ export function reactivateCategory(context: CommandContext, row: CategoryRow): C
   return changed;
 }
 
-/**
- * Stage 3 has no budgets, so the truthful budget impact is "no plan": nothing
- * removed and no current limit. Stage 4 replaces this with the real plan
- * (see the budget_* entries in pending-stages.ts).
- */
-function noBudgetImpact(today: string) {
-  return { planVersion: null, cutoffMonth: monthOf(nextMonthStart(monthOf(today))),
-    currentMonthLimit: null, removedEntries: [] as never[] };
-}
-
 function targetingRules(db: SqliteDatabase, id: string): RuleRow[] {
   return activeRules(db).filter(rule => rule.category_id === id);
 }
@@ -198,7 +192,7 @@ export function categoryArchiveImpact(db: SqliteDatabase, row: CategoryRow, toda
     categoryId: row.id, categoryVersion: String(row.version), ruleSetRevision: String(ruleSetRevision(db)),
     activeRules: targetingRules(db, row.id).map(rule => ({ ruleId: rule.id, position: Number(rule.position),
       matchType: rule.match_type, pattern: rule.pattern, enabled: rule.enabled === 1n, version: String(rule.version) })),
-    budget: noBudgetImpact(today),
+    budget: budgetArchiveImpact(db, row, today, 409),
   };
 }
 
@@ -215,7 +209,7 @@ function resolutionError(detail: string, path = "/ruleResolutions") {
 
 /**
  * Archives a category in one transaction: resolves every enabled active rule
- * targeting it (disable or retarget), stops budgets (none exist before Stage 4)
+ * targeting it (disable or retarget), stops its budget from next month
  * and archives it. Disabled rules keep their retained target and need nothing.
  * An already archived category is returned unchanged.
  */
@@ -224,8 +218,8 @@ export function archiveCategory(context: CommandContext, row: CategoryRow,
   const { db, now } = context;
   requireCustomCategory(row);
   requireRuleSetRevision(db, input.ruleSetRevision);
-  if (input.budgetPlanVersion !== null) throw problem({ status: 409, code: "preview_stale",
-    title: "Budget changed", detail: "This category has no budget plan now. Reload the archive review and try again." });
+  if (input.budgetPlanVersion !== (budgetPlanVersion(db, row.id)?.toString() ?? null)) throw problem({ status: 409, code: "preview_stale",
+    title: "Budget changed", detail: "The budget plan changed. Reload the archive review and try again." });
   const required = new Map(targetingRules(db, row.id).filter(rule => rule.enabled === 1n).map(rule => [rule.id, rule]));
   const seen = new Set<string>();
   const plan = input.ruleResolutions.map((resolution, index) => {
@@ -250,7 +244,8 @@ export function archiveCategory(context: CommandContext, row: CategoryRow,
   const retargets = new Map<string, number>();
   for (const { target } of plan) if (target !== null) retargets.set(target, (retargets.get(target) ?? 0) + 1);
   for (const [target, adding] of retargets) requireTargetCapacity(db, target, adding, "/ruleResolutions");
-  if (row.archived_at !== null) return { row, rulesChanged: [] as RuleRow[] };
+  const retainedPlan = () => budgetPlanVersion(db, row.id) === null ? null : budgetPlanDto(db, requireCategory(db, row.id));
+  if (row.archived_at !== null) return { row, rulesChanged: [] as RuleRow[], budgetPlan: retainedPlan() };
 
   const rulesChanged = plan.map(({ rule, target }) => {
     const changed = target === null
@@ -261,7 +256,8 @@ export function archiveCategory(context: CommandContext, row: CategoryRow,
     return changed;
   });
   if (rulesChanged.length > 0) bumpRuleSetRevision(db);
-  const cutoff = noBudgetImpact(context.today).cutoffMonth;
+  const cutoff = budgetArchiveImpact(db, row, context.today).cutoffMonth;
+  stopBudgetForArchive(context, row, cutoff);
   db.prepare(`UPDATE categories SET archived_at = ?, archive_cutoff_month = ?, version = ?, updated_at = ?
     WHERE id = ?`).run(now, cutoff, nextCounter(row.version), now, row.id);
   const archived = requireCategory(db, row.id);
@@ -269,5 +265,5 @@ export function archiveCategory(context: CommandContext, row: CategoryRow,
     before: categoryDto(row), after: { ...categoryDto(archived), archiveCutoffMonth: cutoff,
       rulesChanged: rulesChanged.map(rule => rule.id) } });
   bumpFinanceRevision(db);
-  return { row: archived, rulesChanged };
+  return { row: archived, rulesChanged, budgetPlan: retainedPlan() };
 }

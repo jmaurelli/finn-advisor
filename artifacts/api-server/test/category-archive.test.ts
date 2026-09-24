@@ -56,7 +56,7 @@ describe("category archive", () => {
         { ruleId: rule(2), position: 2, matchType: "contains", pattern: "p2", enabled: false, version: "2" },
         { ruleId: rule(3), position: 3, matchType: "contains", pattern: "p3", enabled: true, version: "1" },
       ],
-      // The test clock is May 2, 2026 Eastern; budgets arrive in Stage 4.
+      // The test clock is May 2, 2026 Eastern; this category has no plan.
       budget: { planVersion: null, cutoffMonth: "2026-06", currentMonthLimit: null, removedEntries: [] },
     });
     for (const id of [INCOME_CATEGORY, UNCATEGORIZED]) {
