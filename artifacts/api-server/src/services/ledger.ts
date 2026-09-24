@@ -157,7 +157,7 @@ export function accountDto(db: SqliteDatabase, row: AccountRow, today: string): 
 }
 
 export interface AuditEntry {
-  entityType: "account" | "transaction" | "category" | "checkpoint" | "rule" | "transfer_pair" | "refund_link";
+  entityType: "account" | "transaction" | "category" | "checkpoint" | "rule" | "transfer_pair" | "refund_link" | "budget";
   entityId: string;
   accountId?: string | null;
   eventType: string;

@@ -96,7 +96,7 @@ export function categoryRoutes(deps: AppDependencies): IRouter {
       return { version: archived.row.version, body: checkedResponse(ArchiveCategoryResult, {
         category: categoryDto(archived.row),
         rulesChanged: archived.rulesChanged.map(rule => singleRuleDto(deps.db, rule)),
-        ruleSetRevision: String(ruleSetRevision(deps.db)), budgetPlan: null,
+        ruleSetRevision: String(ruleSetRevision(deps.db)), budgetPlan: archived.budgetPlan,
         financeRevision: String(financeRevision(deps.db)),
       }) };
     });

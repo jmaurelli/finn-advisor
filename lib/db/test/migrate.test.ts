@@ -64,12 +64,16 @@ describe("migration runner", () => {
 
     const result = migrate(db);
 
-    expect(result.appliedNow).toEqual(["0001_foundation.sql", "0002_accounts.sql", "0003_transactions_rules.sql"]);
+    expect(result.appliedNow).toEqual(["0001_foundation.sql", "0002_accounts.sql", "0003_transactions_rules.sql", "0004_budgets.sql"]);
     expect(result.schemaVersion).toBe(EXPECTED_SCHEMA_VERSION);
     expect(tableNames(db)).toEqual([
       "accounts",
       "assignment_events",
       "audit_events",
+      "budget_exceptions",
+      "budget_plans",
+      "budget_previews",
+      "budget_schedule",
       "categories",
       "checkpoint_checks",
       "ledger_metadata",
@@ -101,6 +105,7 @@ describe("migration runner", () => {
     const only0001 = scratchMigrations();
     rmSync(join(only0001, "0002_accounts.sql"));
     rmSync(join(only0001, "0003_transactions_rules.sql"));
+    rmSync(join(only0001, "0004_budgets.sql"));
 
     ledger = createTemporaryLedger({ migrated: false });
     migrate(ledger.db, only0001);

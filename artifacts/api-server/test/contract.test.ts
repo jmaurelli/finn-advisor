@@ -13,6 +13,8 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import YAML from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { withWriteTransaction } from "@workspace/db";
+import { writeBudgetConfiguration } from "../src/services/budget-plans.js";
 
 import { startTestServer, TEST_PASSWORD, type TestResponse, type TestServer } from "./harness.js";
 import { createAccount, postTransaction, postThroughService, uuid } from "./finance-harness.js";
@@ -60,6 +62,65 @@ function expectProblem(response: TestResponse, code: string): void {
 }
 
 describe("finance responses match the contract", () => {
+  it("returns the complete maximum-size budget archive impact and actual changed plan", async () => {
+    await api.login();
+    const categoryId = uuid(90);
+    expect((await api.request("/api/categories", { method: "POST", body: { id: categoryId, name: "Food", color: "#123456" } })).status).toBe(201);
+    withWriteTransaction(api.db, () => writeBudgetConfiguration({ db: api.db, now: api.clock.now(), today: "2026-05-02", newId: api.deps.newId }, categoryId, {
+      regular: [{ month: "2999-12", state: "stopped", amount: null }],
+      monthly: Array.from({ length: 999 }, (_, i) => ({ month: `${2027 + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}`,
+        state: "amount" as const, amount: BigInt(i) })),
+    }));
+    const impact = await api.request(`/api/categories/${categoryId}/archive-impact`);
+    expect(impact.status).toBe(200);
+    validateAgainst("CategoryArchiveImpact", impact.body);
+    expect((impact.body as { budget: { removedEntries: unknown[] } }).budget.removedEntries).toHaveLength(1000);
+    const result = await api.request(`/api/categories/${categoryId}/archive`, { method: "POST", headers: { "if-match": '"1"' },
+      body: { budgetPlanVersion: "1", ruleSetRevision: "0", ruleResolutions: [] } });
+    expect(result.status).toBe(200);
+    validateAgainst("ArchiveCategoryResult", result.body);
+    expect(result.body).toMatchObject({ budgetPlan: { version: "2", monthlyEntries: [],
+      regularSchedule: [{ effectiveMonth: "2026-06", state: "stopped", amount: null }] } });
+  });
+  it("budget reads, a maximum-size review and its applied result match the approved OpenAPI", async () => {
+    await api.login();
+    const { id: accountId } = await createAccount(api);
+    const categoryId = uuid(92);
+    expect((await api.request("/api/categories", { method: "POST", body: { id: categoryId, name: "Food", color: "#123456" } })).status).toBe(201);
+    postThroughService(api, { accountId, postedDate: "2026-05-04", merchant: "SYNTHETIC SHOP",
+      kind: "purchase", money: { amountMinor: "-2500", currency: "USD" },
+      category: { mode: "category", categoryId } });
+    withWriteTransaction(api.db, () => writeBudgetConfiguration({ db: api.db, now: api.clock.now(), today: "2026-05-02", newId: api.deps.newId }, categoryId, {
+      regular: [{ month: "2026-05", state: "amount", amount: 10000n }, { month: "2999-12", state: "stopped", amount: null }],
+      monthly: Array.from({ length: 998 }, (_, i) => ({ month: `${2027 + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}`,
+        state: "amount" as const, amount: BigInt(i) })),
+    }));
+    const month = await api.request("/api/budgets?month=2026-05");
+    expect(month.status).toBe(200);
+    validateAgainst("BudgetMonth", month.body);
+    expect(month.body).toMatchObject({ items: [{ categoryId, limit: { amountMinor: "10000", currency: "USD" },
+      source: "regular", net: { amountMinor: "2500", currency: "USD" }, percentUsed: 25 }] });
+    const plan = await api.request(`/api/budget-plans/${categoryId}`);
+    expect(plan.status).toBe(200);
+    validateAgainst("BudgetPlan", plan.body);
+
+    const review = await api.request(`/api/budget-plans/${categoryId}/preview-change`, {
+      method: "POST", body: { change: "stop", fromMonth: "2026-06" } });
+    expect(review.status, review.text).toBe(201);
+    validateAgainst("BudgetChangePreview", review.body);
+    expect((review.body as { removedEntries: unknown[] }).removedEntries).toHaveLength(999);
+    const result = await api.request(`/api/budget-plans/${categoryId}/apply-change`, {
+      method: "POST", body: { previewId: (review.body as { id: string }).id } });
+    expect(result.status, result.text).toBe(200);
+    validateAgainst("BudgetChangeApplyResult", result.body);
+    expect(result.body).toMatchObject({ plan: { version: "2", monthlyEntries: [], regularSchedule: [
+      { effectiveMonth: "2026-05", state: "amount", amount: { amountMinor: "10000", currency: "USD" } },
+      { effectiveMonth: "2026-06", state: "stopped", amount: null }] } });
+    expectProblem(await api.request(`/api/budget-plans/${categoryId}/preview-change`, {
+      method: "POST", body: { change: "set_regular", fromMonth: "2026-04", amount: { amountMinor: "100", currency: "USD" } } }), "month_in_past");
+    expectProblem(await api.request("/api/budget-plans/30000000-0000-4000-8000-000000000000/preview-change", {
+      method: "POST", body: { change: "skip_month", month: "2026-06" } }), "budget_ineligible_category");
+  });
   it("rule-run previews, rows, results and refusals match the approved OpenAPI", async () => {
     await api.login();
     const { id: accountId } = await createAccount(api);
