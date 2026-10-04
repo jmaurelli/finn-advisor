@@ -1,6 +1,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { randomUUID } from "node:crypto";
 
+import { MULTIPART_PATHS } from "../config.js";
 import type { AppDependencies } from "../deps.js";
 import { problem } from "../lib/problem.js";
 
@@ -91,10 +92,29 @@ export function rejectForwardingHeaders(
   );
 }
 
-/** Writes carry JSON only; anything else is refused before it is parsed. */
+/**
+ * Writes carry JSON only; anything else is refused before it is parsed. The
+ * single declared upload route is the exception, and it checks its own content
+ * type before reading a byte.
+ */
 export function requireJsonContentType(req: Request, _res: Response, next: NextFunction): void {
   if (!isWrite(req)) {
     next();
+    return;
+  }
+  if (MULTIPART_PATHS.some(path => path.test(req.path))) {
+    if (req.is("multipart/form-data") === "multipart/form-data") {
+      next();
+      return;
+    }
+    next(
+      problem({
+        status: 415,
+        code: "unsupported_media_type",
+        title: "Unsupported format",
+        detail: "Send this upload as multipart/form-data.",
+      }),
+    );
     return;
   }
   const declared = req.get("content-type");

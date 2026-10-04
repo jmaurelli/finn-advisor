@@ -540,6 +540,13 @@ export const GetAccountBalanceResponse = zod.object({
  *   for the day before it, and optionally held earlier rows from one
  *   import preview posted in the same transaction.
  * Archived accounts return 409 `reactivation_required`.
+ *
+ * A held-row selection this command cannot use fails as a conflict or a
+ * validation error here; it never reports the import endpoints' 410. A
+ * preview that expired, was discarded, already posted a selected row or
+ * moved to another version returns 409 `preview_stale`; a selection that
+ * does not fit the requested start returns 422 `validation_failed`.
+ * Nothing is posted and the baseline is unchanged in either case.
  * @summary Correct the opening balance, move the start later, or extend coverage backward
  */
 export const ChangeAccountBaselineParams = zod.object({
@@ -4625,7 +4632,7 @@ export const ListImportsResponse = zod.object({
   "version": zod.string().regex(listImportsResponseItemsItemVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(listImportsResponseItemsItemRowCountsTotalMin),
-  "ready": zod.number().int().min(listImportsResponseItemsItemRowCountsReadyMin),
+  "ready": zod.number().int().min(listImportsResponseItemsItemRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(listImportsResponseItemsItemRowCountsHeldMin),
   "excluded": zod.number().int().min(listImportsResponseItemsItemRowCountsExcludedMin)
 }).strict(),
@@ -4633,11 +4640,11 @@ export const ListImportsResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(listImportsResponseItemsItemResultOneRowsMin),
-  "added": zod.number().int().min(listImportsResponseItemsItemResultOneAddedMin),
+  "added": zod.number().int().min(listImportsResponseItemsItemResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(listImportsResponseItemsItemResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(listImportsResponseItemsItemResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(listImportsResponseItemsItemResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(listImportsResponseItemsItemResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(listImportsResponseItemsItemFailureOneMessageMax)
@@ -4658,6 +4665,12 @@ export const ListImportsResponse = zod.object({
  * preview or completed outcome (200) instead of a second write.
  * Archived accounts return 409 `reactivation_required`. Parsing may
  * finish after the response (`status: parsing`); poll the batch.
+ *
+ * A completed import keeps recognising its file after the stored copy is
+ * deleted. A cancelled, expired or failed attempt stops recognising it,
+ * even if some of its rows had already posted through a tracking-start
+ * extension; uploading that file again then creates a new preview and
+ * those earlier postings are offered as ordinary suspected duplicates.
  * @summary Upload a bank file into a new preview
  */
 export const createImportBodyFormatIdRegExp = new RegExp('^[a-z0-9][a-z0-9-]{0,63}$');
@@ -4716,7 +4729,7 @@ export const CreateImportResponse = zod.object({
   "version": zod.string().regex(createImportResponseImportVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(createImportResponseImportRowCountsTotalMin),
-  "ready": zod.number().int().min(createImportResponseImportRowCountsReadyMin),
+  "ready": zod.number().int().min(createImportResponseImportRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(createImportResponseImportRowCountsHeldMin),
   "excluded": zod.number().int().min(createImportResponseImportRowCountsExcludedMin)
 }).strict(),
@@ -4724,11 +4737,11 @@ export const CreateImportResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(createImportResponseImportResultOneRowsMin),
-  "added": zod.number().int().min(createImportResponseImportResultOneAddedMin),
+  "added": zod.number().int().min(createImportResponseImportResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(createImportResponseImportResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(createImportResponseImportResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(createImportResponseImportResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(createImportResponseImportResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(createImportResponseImportFailureOneMessageMax)
@@ -4791,7 +4804,7 @@ export const GetImportResponse = zod.object({
   "version": zod.string().regex(getImportResponseVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(getImportResponseRowCountsTotalMin),
-  "ready": zod.number().int().min(getImportResponseRowCountsReadyMin),
+  "ready": zod.number().int().min(getImportResponseRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(getImportResponseRowCountsHeldMin),
   "excluded": zod.number().int().min(getImportResponseRowCountsExcludedMin)
 }).strict(),
@@ -4799,11 +4812,11 @@ export const GetImportResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(getImportResponseResultOneRowsMin),
-  "added": zod.number().int().min(getImportResponseResultOneAddedMin),
+  "added": zod.number().int().min(getImportResponseResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(getImportResponseResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(getImportResponseResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(getImportResponseResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(getImportResponseResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(getImportResponseFailureOneMessageMax)
@@ -4909,8 +4922,8 @@ export const ListImportRowsResponse = zod.object({
   "counterpartKind": zod.enum(['purchase', 'refund', 'income', 'transfer']),
   "counterpartVersion": zod.string().regex(listImportRowsResponseItemsItemTransferCandidateOneCounterpartVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "requiresKindChange": zod.boolean(),
-  "eligible": zod.boolean().describe('False when the counterpart is voided, already paired, or on an archived account and would need a type change.'),
-  "ineligibleReason": zod.union([zod.literal('already_paired'),zod.literal('reactivation_required'),zod.literal('voided'),zod.literal(null)]).nullable(),
+  "eligible": zod.boolean().describe('False when the counterpart is voided, already paired, has refund links that a type change would invalidate, or is on an archived account and would need a type change.'),
+  "ineligibleReason": zod.union([zod.literal('already_paired'),zod.literal('reactivation_required'),zod.literal('voided'),zod.literal('refund_links_present'),zod.literal(null)]).nullable(),
   "postedDate": zod.string().date().regex(listImportRowsResponseItemsItemTransferCandidateOnePostedDateRegExp).describe('Calendar date `YYYY-MM-DD` between 1900-01-01 and 2999-12-31; impossible dates are rejected.'),
   "money": zod.object({
   "amountMinor": zod.string().max(listImportRowsResponseItemsItemTransferCandidateOneMoneyAmountMinorMax).regex(listImportRowsResponseItemsItemTransferCandidateOneMoneyAmountMinorRegExp).describe('Signed nonzero integer cents, absolute value below 10^11.'),
@@ -4918,10 +4931,10 @@ export const ListImportRowsResponse = zod.object({
 }).strict(),
   "daysApart": zod.number().int().min(listImportRowsResponseItemsItemTransferCandidateOneDaysApartMin).max(listImportRowsResponseItemsItemTransferCandidateOneDaysApartMax),
   "decision": zod.union([zod.literal('confirm'),zod.literal('reject'),zod.literal(null)]).nullable()
-}).strict().describe('An already-posted counterpart in another owned account. Confirming it\npairs the two at commit and, if `requiresKindChange`, changes the\ncounterpart\'s type to `transfer` in the same transaction. Commit\nrechecks `counterpartVersion` and the counterpart account\'s state.\n'),zod.null()]),
+}).strict().describe('An already-posted counterpart in another owned account. Confirming it\npairs the two at commit and, if `requiresKindChange`, changes the\ncounterpart\'s type to `transfer` in the same transaction. Commit\nrechecks `counterpartVersion` and the counterpart account\'s state.\nA counterpart with refund links cannot be reclassified. Resolve those\nlinks separately and refresh, or reject the suggestion; confirmation\nnever removes refund links automatically.\n'),zod.null()]),
   "excluded": zod.boolean(),
   "reviewRequired": zod.boolean().describe('Suggestions changed after a refresh.'),
-  "postedTransactionId": zod.string().uuid().nullable(),
+  "postedTransactionId": zod.string().uuid().nullable().describe('Set when this row was already posted while extending the account\'s\ntracking start backward. Such a row stays `ready` for as long as\nthe preview is open, but it is immutable and can never post a\nsecond time; commit skips it.\n'),
   "version": zod.string().regex(listImportRowsResponseItemsItemVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.')
 }).strict()).max(listImportRowsResponseItemsMax),
   "nextCursor": zod.union([zod.string().regex(listImportRowsResponseNextCursorOneRegExp).describe('Opaque keyset cursor bound to the request\'s filters.'),zod.null()]),
@@ -4939,6 +4952,13 @@ export const ListImportRowsResponse = zod.object({
  * `If-Match` carries the import batch version (as for commit); the
  * response `ETag` is the new batch version. A confirmed bank-ID duplicate
  * cannot be included (409 `duplicate_source_identity`).
+ *
+ * A save that matches the current version acknowledges the changed
+ * suggestions displayed for this row, including re-saving a choice that
+ * is already visible. It does not resolve another row's issues, and it
+ * does not approve a duplicate or transfer candidate that this same edit
+ * newly discovers: that candidate is held for its own decision. An empty
+ * body is rejected.
  * @summary Save a review decision or correction for one row
  */
 export const UpdateImportRowParams = zod.object({
@@ -5081,8 +5101,8 @@ export const UpdateImportRowResponse = zod.object({
   "counterpartKind": zod.enum(['purchase', 'refund', 'income', 'transfer']),
   "counterpartVersion": zod.string().regex(updateImportRowResponseRowTransferCandidateOneCounterpartVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "requiresKindChange": zod.boolean(),
-  "eligible": zod.boolean().describe('False when the counterpart is voided, already paired, or on an archived account and would need a type change.'),
-  "ineligibleReason": zod.union([zod.literal('already_paired'),zod.literal('reactivation_required'),zod.literal('voided'),zod.literal(null)]).nullable(),
+  "eligible": zod.boolean().describe('False when the counterpart is voided, already paired, has refund links that a type change would invalidate, or is on an archived account and would need a type change.'),
+  "ineligibleReason": zod.union([zod.literal('already_paired'),zod.literal('reactivation_required'),zod.literal('voided'),zod.literal('refund_links_present'),zod.literal(null)]).nullable(),
   "postedDate": zod.string().date().regex(updateImportRowResponseRowTransferCandidateOnePostedDateRegExp).describe('Calendar date `YYYY-MM-DD` between 1900-01-01 and 2999-12-31; impossible dates are rejected.'),
   "money": zod.object({
   "amountMinor": zod.string().max(updateImportRowResponseRowTransferCandidateOneMoneyAmountMinorMax).regex(updateImportRowResponseRowTransferCandidateOneMoneyAmountMinorRegExp).describe('Signed nonzero integer cents, absolute value below 10^11.'),
@@ -5090,10 +5110,10 @@ export const UpdateImportRowResponse = zod.object({
 }).strict(),
   "daysApart": zod.number().int().min(updateImportRowResponseRowTransferCandidateOneDaysApartMin).max(updateImportRowResponseRowTransferCandidateOneDaysApartMax),
   "decision": zod.union([zod.literal('confirm'),zod.literal('reject'),zod.literal(null)]).nullable()
-}).strict().describe('An already-posted counterpart in another owned account. Confirming it\npairs the two at commit and, if `requiresKindChange`, changes the\ncounterpart\'s type to `transfer` in the same transaction. Commit\nrechecks `counterpartVersion` and the counterpart account\'s state.\n'),zod.null()]),
+}).strict().describe('An already-posted counterpart in another owned account. Confirming it\npairs the two at commit and, if `requiresKindChange`, changes the\ncounterpart\'s type to `transfer` in the same transaction. Commit\nrechecks `counterpartVersion` and the counterpart account\'s state.\nA counterpart with refund links cannot be reclassified. Resolve those\nlinks separately and refresh, or reject the suggestion; confirmation\nnever removes refund links automatically.\n'),zod.null()]),
   "excluded": zod.boolean(),
   "reviewRequired": zod.boolean().describe('Suggestions changed after a refresh.'),
-  "postedTransactionId": zod.string().uuid().nullable(),
+  "postedTransactionId": zod.string().uuid().nullable().describe('Set when this row was already posted while extending the account\'s\ntracking start backward. Such a row stays `ready` for as long as\nthe preview is open, but it is immutable and can never post a\nsecond time; commit skips it.\n'),
   "version": zod.string().regex(updateImportRowResponseRowVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.')
 }).strict(),
   "import": zod.object({
@@ -5110,7 +5130,7 @@ export const UpdateImportRowResponse = zod.object({
   "version": zod.string().regex(updateImportRowResponseImportVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(updateImportRowResponseImportRowCountsTotalMin),
-  "ready": zod.number().int().min(updateImportRowResponseImportRowCountsReadyMin),
+  "ready": zod.number().int().min(updateImportRowResponseImportRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(updateImportRowResponseImportRowCountsHeldMin),
   "excluded": zod.number().int().min(updateImportRowResponseImportRowCountsExcludedMin)
 }).strict(),
@@ -5118,11 +5138,11 @@ export const UpdateImportRowResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(updateImportRowResponseImportResultOneRowsMin),
-  "added": zod.number().int().min(updateImportRowResponseImportResultOneAddedMin),
+  "added": zod.number().int().min(updateImportRowResponseImportResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(updateImportRowResponseImportResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(updateImportRowResponseImportResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(updateImportRowResponseImportResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(updateImportRowResponseImportResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(updateImportRowResponseImportFailureOneMessageMax)
@@ -5137,6 +5157,10 @@ export const UpdateImportRowResponse = zod.object({
  * is incompatible with the type, and excluded rows, are skipped and
  * reported. `If-Match` carries the import batch version. Preview must be
  * open (409 `import_not_open`).
+ *
+ * For each row it updates, this acknowledges only that row's changed type
+ * suggestion. A changed duplicate or transfer suggestion on the same row
+ * still needs its own decision, and skipped rows acknowledge nothing.
  * @summary Apply one row's type choice to every row in this file with the same description
  */
 export const BulkSetImportRowTypeParams = zod.object({
@@ -5206,7 +5230,7 @@ export const BulkSetImportRowTypeResponse = zod.object({
   "version": zod.string().regex(bulkSetImportRowTypeResponseImportVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(bulkSetImportRowTypeResponseImportRowCountsTotalMin),
-  "ready": zod.number().int().min(bulkSetImportRowTypeResponseImportRowCountsReadyMin),
+  "ready": zod.number().int().min(bulkSetImportRowTypeResponseImportRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(bulkSetImportRowTypeResponseImportRowCountsHeldMin),
   "excluded": zod.number().int().min(bulkSetImportRowTypeResponseImportRowCountsExcludedMin)
 }).strict(),
@@ -5214,11 +5238,11 @@ export const BulkSetImportRowTypeResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(bulkSetImportRowTypeResponseImportResultOneRowsMin),
-  "added": zod.number().int().min(bulkSetImportRowTypeResponseImportResultOneAddedMin),
+  "added": zod.number().int().min(bulkSetImportRowTypeResponseImportResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(bulkSetImportRowTypeResponseImportResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(bulkSetImportRowTypeResponseImportResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(bulkSetImportRowTypeResponseImportResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(bulkSetImportRowTypeResponseImportResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(bulkSetImportRowTypeResponseImportFailureOneMessageMax)
@@ -5290,7 +5314,7 @@ export const RefreshImportResponse = zod.object({
   "version": zod.string().regex(refreshImportResponseImportVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(refreshImportResponseImportRowCountsTotalMin),
-  "ready": zod.number().int().min(refreshImportResponseImportRowCountsReadyMin),
+  "ready": zod.number().int().min(refreshImportResponseImportRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(refreshImportResponseImportRowCountsHeldMin),
   "excluded": zod.number().int().min(refreshImportResponseImportRowCountsExcludedMin)
 }).strict(),
@@ -5298,11 +5322,11 @@ export const RefreshImportResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(refreshImportResponseImportResultOneRowsMin),
-  "added": zod.number().int().min(refreshImportResponseImportResultOneAddedMin),
+  "added": zod.number().int().min(refreshImportResponseImportResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(refreshImportResponseImportResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(refreshImportResponseImportResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(refreshImportResponseImportResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(refreshImportResponseImportResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(refreshImportResponseImportFailureOneMessageMax)
@@ -5384,7 +5408,7 @@ export const CommitImportResponse = zod.object({
   "version": zod.string().regex(commitImportResponseImportVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(commitImportResponseImportRowCountsTotalMin),
-  "ready": zod.number().int().min(commitImportResponseImportRowCountsReadyMin),
+  "ready": zod.number().int().min(commitImportResponseImportRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(commitImportResponseImportRowCountsHeldMin),
   "excluded": zod.number().int().min(commitImportResponseImportRowCountsExcludedMin)
 }).strict(),
@@ -5392,11 +5416,11 @@ export const CommitImportResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(commitImportResponseImportResultOneRowsMin),
-  "added": zod.number().int().min(commitImportResponseImportResultOneAddedMin),
+  "added": zod.number().int().min(commitImportResponseImportResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(commitImportResponseImportResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(commitImportResponseImportResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(commitImportResponseImportResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(commitImportResponseImportResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(commitImportResponseImportFailureOneMessageMax)
@@ -5411,6 +5435,11 @@ export const CommitImportResponse = zod.object({
  * Deletes the upload and unfinished review contents; keeps only a
  * filename/date/outcome entry. Discarding a follow-up never touches the
  * original import's excluded rows.
+ *
+ * Only unfinished work is removed. Any row this preview already posted
+ * while extending the tracking start keeps its transaction and the source
+ * evidence behind it as financial history, which no longer appears here
+ * or in this import's rows (410).
  * @summary Discard an open preview
  */
 export const DiscardImportParams = zod.object({
@@ -5470,7 +5499,7 @@ export const DiscardImportResponse = zod.object({
   "version": zod.string().regex(discardImportResponseImportVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(discardImportResponseImportRowCountsTotalMin),
-  "ready": zod.number().int().min(discardImportResponseImportRowCountsReadyMin),
+  "ready": zod.number().int().min(discardImportResponseImportRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(discardImportResponseImportRowCountsHeldMin),
   "excluded": zod.number().int().min(discardImportResponseImportRowCountsExcludedMin)
 }).strict(),
@@ -5478,11 +5507,11 @@ export const DiscardImportResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(discardImportResponseImportResultOneRowsMin),
-  "added": zod.number().int().min(discardImportResponseImportResultOneAddedMin),
+  "added": zod.number().int().min(discardImportResponseImportResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(discardImportResponseImportResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(discardImportResponseImportResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(discardImportResponseImportResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(discardImportResponseImportResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(discardImportResponseImportFailureOneMessageMax)
@@ -5556,7 +5585,7 @@ export const CreateImportFollowUpResponse = zod.object({
   "version": zod.string().regex(createImportFollowUpResponseImportVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(createImportFollowUpResponseImportRowCountsTotalMin),
-  "ready": zod.number().int().min(createImportFollowUpResponseImportRowCountsReadyMin),
+  "ready": zod.number().int().min(createImportFollowUpResponseImportRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(createImportFollowUpResponseImportRowCountsHeldMin),
   "excluded": zod.number().int().min(createImportFollowUpResponseImportRowCountsExcludedMin)
 }).strict(),
@@ -5564,11 +5593,11 @@ export const CreateImportFollowUpResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(createImportFollowUpResponseImportResultOneRowsMin),
-  "added": zod.number().int().min(createImportFollowUpResponseImportResultOneAddedMin),
+  "added": zod.number().int().min(createImportFollowUpResponseImportResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(createImportFollowUpResponseImportResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(createImportFollowUpResponseImportResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(createImportFollowUpResponseImportResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(createImportFollowUpResponseImportResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(createImportFollowUpResponseImportFailureOneMessageMax)
@@ -6171,7 +6200,7 @@ export const ExportLedgerJsonResponse = zod.object({
   "version": zod.string().regex(exportLedgerJsonResponseImportsItemBatchVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "rowCounts": zod.object({
   "total": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchRowCountsTotalMin),
-  "ready": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchRowCountsReadyMin),
+  "ready": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchRowCountsReadyMin).describe('Rows with nothing left to decide. This includes rows already posted\nby extending the tracking start, so it is not a count of the\ntransactions a commit would still add.\n'),
   "held": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchRowCountsHeldMin),
   "excluded": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchRowCountsExcludedMin)
 }).strict(),
@@ -6179,11 +6208,11 @@ export const ExportLedgerJsonResponse = zod.object({
   "commitBlockers": zod.array(zod.enum(['not_open', 'parsing', 'held_rows', 'needs_refresh', 'account_archived'])),
   "result": zod.union([zod.object({
   "rows": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchResultOneRowsMin),
-  "added": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchResultOneAddedMin),
+  "added": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchResultOneAddedMin).describe('Transactions this import posted, counting rows posted earlier by a\ntracking-start extension and rows posted by the final commit once\neach.\n'),
   "excluded": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchResultOneExcludedMin),
-  "pairedTransfers": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchResultOnePairedTransfersMin),
+  "pairedTransfers": zod.number().int().min(exportLedgerJsonResponseImportsItemBatchResultOnePairedTransfersMin).describe('Transfer pairings this import performed on those same posting\npaths, not pairs that happen to still be linked afterwards.\n'),
   "completedAt": zod.string().datetime({"offset":true}).regex(exportLedgerJsonResponseImportsItemBatchResultOneCompletedAtRegExp).describe('UTC RFC 3339 event time.')
-}).strict().describe('Immutable once committed; follow-ups never change it.'),zod.null()]),
+}).strict().describe('Immutable once committed; follow-ups never change it. Later repairs,\nvoids and unlinks never change it either: it records what this import\ndid, not what survives now.\n'),zod.null()]),
   "failure": zod.union([zod.object({
   "code": zod.enum(['unreadable_file', 'unsupported_encoding', 'malformed_csv', 'header_mismatch', 'limit_exceeded', 'upload_incomplete', 'pending_records_unsupported']),
   "message": zod.string().max(exportLedgerJsonResponseImportsItemBatchFailureOneMessageMax)
@@ -6232,8 +6261,8 @@ export const ExportLedgerJsonResponse = zod.object({
   "counterpartKind": zod.enum(['purchase', 'refund', 'income', 'transfer']),
   "counterpartVersion": zod.string().regex(exportLedgerJsonResponseImportsItemRowsItemTransferCandidateOneCounterpartVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.'),
   "requiresKindChange": zod.boolean(),
-  "eligible": zod.boolean().describe('False when the counterpart is voided, already paired, or on an archived account and would need a type change.'),
-  "ineligibleReason": zod.union([zod.literal('already_paired'),zod.literal('reactivation_required'),zod.literal('voided'),zod.literal(null)]).nullable(),
+  "eligible": zod.boolean().describe('False when the counterpart is voided, already paired, has refund links that a type change would invalidate, or is on an archived account and would need a type change.'),
+  "ineligibleReason": zod.union([zod.literal('already_paired'),zod.literal('reactivation_required'),zod.literal('voided'),zod.literal('refund_links_present'),zod.literal(null)]).nullable(),
   "postedDate": zod.string().date().regex(exportLedgerJsonResponseImportsItemRowsItemTransferCandidateOnePostedDateRegExp).describe('Calendar date `YYYY-MM-DD` between 1900-01-01 and 2999-12-31; impossible dates are rejected.'),
   "money": zod.object({
   "amountMinor": zod.string().max(exportLedgerJsonResponseImportsItemRowsItemTransferCandidateOneMoneyAmountMinorMax).regex(exportLedgerJsonResponseImportsItemRowsItemTransferCandidateOneMoneyAmountMinorRegExp).describe('Signed nonzero integer cents, absolute value below 10^11.'),
@@ -6241,10 +6270,10 @@ export const ExportLedgerJsonResponse = zod.object({
 }).strict(),
   "daysApart": zod.number().int().min(exportLedgerJsonResponseImportsItemRowsItemTransferCandidateOneDaysApartMin).max(exportLedgerJsonResponseImportsItemRowsItemTransferCandidateOneDaysApartMax),
   "decision": zod.union([zod.literal('confirm'),zod.literal('reject'),zod.literal(null)]).nullable()
-}).strict().describe('An already-posted counterpart in another owned account. Confirming it\npairs the two at commit and, if `requiresKindChange`, changes the\ncounterpart\'s type to `transfer` in the same transaction. Commit\nrechecks `counterpartVersion` and the counterpart account\'s state.\n'),zod.null()]),
+}).strict().describe('An already-posted counterpart in another owned account. Confirming it\npairs the two at commit and, if `requiresKindChange`, changes the\ncounterpart\'s type to `transfer` in the same transaction. Commit\nrechecks `counterpartVersion` and the counterpart account\'s state.\nA counterpart with refund links cannot be reclassified. Resolve those\nlinks separately and refresh, or reject the suggestion; confirmation\nnever removes refund links automatically.\n'),zod.null()]),
   "excluded": zod.boolean(),
   "reviewRequired": zod.boolean().describe('Suggestions changed after a refresh.'),
-  "postedTransactionId": zod.string().uuid().nullable(),
+  "postedTransactionId": zod.string().uuid().nullable().describe('Set when this row was already posted while extending the account\'s\ntracking start backward. Such a row stays `ready` for as long as\nthe preview is open, but it is immutable and can never post a\nsecond time; commit skips it.\n'),
   "version": zod.string().regex(exportLedgerJsonResponseImportsItemRowsItemVersionRegExp).describe('Monotonic record version as a canonical positive integer string below 10^18.')
 }).strict())
 }).strict()).describe('Normalized import history with retained rows; raw uploads are never included.')

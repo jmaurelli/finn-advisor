@@ -137,10 +137,21 @@ function reviewCounts(db: SqliteDatabase): Record<string, number> {
        AND NOT EXISTS (SELECT 1 FROM transfer_legs l WHERE l.transaction_id = t.id)`,
   ).get() as { n: bigint };
 
+  // An import the owner still has to finish, and the rows inside those
+  // imports that are waiting on a decision. A finished import is not work.
+  const openImports = db.prepare(
+    "SELECT COUNT(*) AS n FROM import_batches WHERE status IN ('receiving', 'parsing', 'preview')",
+  ).get() as { n: bigint };
+  const heldImportRows = db.prepare(
+    `SELECT COUNT(*) AS n FROM import_rows r
+     JOIN import_batches b ON b.id = r.import_id
+     WHERE r.state = 'held' AND b.status IN ('receiving', 'parsing', 'preview')`,
+  ).get() as { n: bigint };
+
   return {
     uncategorizedCount: Number(uncategorizedCount.n),
-    openImportCount: 0,
-    heldImportRowCount: 0,
+    openImportCount: Number(openImports.n),
+    heldImportRowCount: Number(heldImportRows.n),
     needsRecheckCount,
     differenceCount,
     unmatchedTransferCount: Number(unmatched.n),

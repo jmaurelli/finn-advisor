@@ -445,6 +445,7 @@ components:
         - unsupported_file_format
         - login_throttled
         - service_busy
+        - storage_unavailable
         - maintenance
         - internal_error
     FieldError:
@@ -2227,19 +2228,39 @@ components:
       required: [ total, ready, held, excluded ]
       properties:
         total: { type: integer, minimum: 0 }
-        ready: { type: integer, minimum: 0 }
+        ready:
+          description: |
+            Rows with nothing left to decide. This includes rows already posted
+            by extending the tracking start, so it is not a count of the
+            transactions a commit would still add.
+          type: integer
+          minimum: 0
         held: { type: integer, minimum: 0 }
         excluded: { type: integer, minimum: 0 }
     ImportOutcome:
       type: object
       additionalProperties: false
-      description: Immutable once committed; follow-ups never change it.
+      description: |
+        Immutable once committed; follow-ups never change it. Later repairs,
+        voids and unlinks never change it either: it records what this import
+        did, not what survives now.
       required: [ rows, added, excluded, pairedTransfers, completedAt ]
       properties:
         rows: { type: integer, minimum: 0 }
-        added: { type: integer, minimum: 0 }
+        added:
+          description: |
+            Transactions this import posted, counting rows posted earlier by a
+            tracking-start extension and rows posted by the final commit once
+            each.
+          type: integer
+          minimum: 0
         excluded: { type: integer, minimum: 0 }
-        pairedTransfers: { type: integer, minimum: 0 }
+        pairedTransfers:
+          description: |
+            Transfer pairings this import performed on those same posting
+            paths, not pairs that happen to still be linked afterwards.
+          type: integer
+          minimum: 0
         completedAt: { $ref: "#/components/schemas/Timestamp" }
     ImportFailure:
       type: object
@@ -2426,6 +2447,9 @@ components:
         pairs the two at commit and, if `requiresKindChange`, changes the
         counterpart's type to `transfer` in the same transaction. Commit
         rechecks `counterpartVersion` and the counterpart account's state.
+        A counterpart with refund links cannot be reclassified. Resolve those
+        links separately and refresh, or reject the suggestion; confirmation
+        never removes refund links automatically.
       required: [ transactionId, accountId, counterpartKind, counterpartVersion, requiresKindChange, eligible, ineligibleReason, postedDate, money, daysApart, decision ]
       properties:
         transactionId: { $ref: "#/components/schemas/Uuid" }
@@ -2434,11 +2458,11 @@ components:
         counterpartVersion: { $ref: "#/components/schemas/EntityVersion" }
         requiresKindChange: { type: boolean }
         eligible:
-          description: False when the counterpart is voided, already paired, or on an archived account and would need a type change.
+          description: False when the counterpart is voided, already paired, has refund links that a type change would invalidate, or is on an archived account and would need a type change.
           type: boolean
         ineligibleReason:
           type: [ string, "null" ]
-          enum: [ already_paired, reactivation_required, voided, null ]
+          enum: [ already_paired, reactivation_required, voided, refund_links_present, null ]
         postedDate: { $ref: "#/components/schemas/LocalDate" }
         money: { $ref: "#/components/schemas/NonZeroMoney" }
         daysApart: { type: integer, minimum: 0, maximum: 7 }
@@ -2492,6 +2516,11 @@ components:
           description: Suggestions changed after a refresh.
           type: boolean
         postedTransactionId:
+          description: |
+            Set when this row was already posted while extending the account's
+            tracking start backward. Such a row stays `ready` for as long as
+            the preview is open, but it is immutable and can never post a
+            second time; commit skips it.
           type: [ string, "null" ]
           format: uuid
         version: { $ref: "#/components/schemas/EntityVersion" }
@@ -2747,7 +2776,10 @@ components:
           examples:
             previewExpired: { $ref: "#/components/examples/Problem_preview_expired" }
     GoneImport:
-      description: The preview expired or its review contents were deleted; upload again
+      description: |
+        The preview expired or its review contents were deleted; upload again.
+        Transactions it had already posted are unaffected and remain readable
+        as ordinary ledger history.
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
@@ -2808,6 +2840,20 @@ components:
           examples:
             busy: { $ref: "#/components/examples/Problem_service_busy" }
             maintenance: { $ref: "#/components/examples/Problem_maintenance" }
+    UploadServiceUnavailable:
+      description: |
+        Temporarily busy or in maintenance, or the upload store itself is
+        unusable. `storage_unavailable` is the store's fault, not the file's,
+        and carries no Retry-After: it needs an operator, not a retry.
+      headers:
+        Retry-After: { $ref: "#/components/headers/RetryAfter" }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            busy: { $ref: "#/components/examples/Problem_service_busy" }
+            maintenance: { $ref: "#/components/examples/Problem_maintenance" }
+            storage: { $ref: "#/components/examples/Problem_storage_unavailable" }
     InternalError:
       description: Unexpected fault, reported with a safe message and request ID; never a partial result
       content:
@@ -2942,6 +2988,8 @@ components:
       value: { type: "urn:money-desk:problem:login_throttled", title: Too many attempts, status: 429, code: login_throttled, detail: "Wait before trying again.", requestId: 50000000-0000-4000-8000-000000000028, retryAfterSeconds: 300 }
     Problem_service_busy:
       value: { type: "urn:money-desk:problem:service_busy", title: Busy, status: 503, code: service_busy, detail: "Another save is finishing. Try again in a moment.", requestId: 50000000-0000-4000-8000-000000000029, retryAfterSeconds: 1 }
+    Problem_storage_unavailable:
+      value: { type: "urn:money-desk:problem:storage_unavailable", title: Upload storage unavailable, status: 503, code: storage_unavailable, detail: "Uploads cannot be stored right now. This is a problem with the app's storage, not with your file.", requestId: 50000000-0000-4000-8000-00000000002c }
     Problem_maintenance:
       value: { type: "urn:money-desk:problem:maintenance", title: Maintenance, status: 503, code: maintenance, detail: "The Money Desk is being updated. Saved data is safe.", requestId: 50000000-0000-4000-8000-00000000002a, retryAfterSeconds: 60 }
     Problem_internal_error:
@@ -3634,6 +3682,83 @@ components:
         reviewRequired: false
         postedTransactionId: 10000000-0000-4000-8000-000000000004
         version: "2"
+    Fixture_ImportMarchExtensionPreview:
+      summary: The March checking preview at 17:00, just after its one earlier row posted with the tracking-start extension; it is still open for the rest
+      value: &importI6
+        id: 40000000-0000-4000-8000-000000000006
+        accountId: 20000000-0000-4000-8000-000000000001
+        formatId: synthetic-canonical-checking
+        formatVersion: 1
+        filename: synthetic-checking-march.csv
+        status: preview
+        parentImportId: null
+        createdAt: "2026-05-02T16:40:00Z"
+        lastReviewedAt: "2026-05-02T16:50:00Z"
+        expiresAt: "2026-06-01T16:50:00Z"
+        version: "3"
+        rowCounts: { total: 2, ready: 1, held: 1, excluded: 0 }
+        staleReasons: []
+        commitBlockers: [held_rows]
+        result: null
+        failure: null
+        uploadRetainedUntil: null
+    Fixture_ImportMarchExtensionCommitted:
+      summary: 17:30 - the same import completed; `added` counts the row the extension posted and the row this commit posted once each
+      value: &importI6c
+        id: 40000000-0000-4000-8000-000000000006
+        accountId: 20000000-0000-4000-8000-000000000001
+        formatId: synthetic-canonical-checking
+        formatVersion: 1
+        filename: synthetic-checking-march.csv
+        status: committed
+        parentImportId: null
+        createdAt: "2026-05-02T16:40:00Z"
+        lastReviewedAt: "2026-05-02T17:20:00Z"
+        expiresAt: null
+        version: "6"
+        rowCounts: { total: 2, ready: 2, held: 0, excluded: 0 }
+        staleReasons: []
+        commitBlockers: [not_open]
+        result: { rows: 2, added: 2, excluded: 0, pairedTransfers: 0, completedAt: "2026-05-02T17:30:00Z" }
+        failure: null
+        uploadRetainedUntil: "2026-06-01T17:30:00Z"
+    Fixture_RowBaselinePosted:
+      summary: Already posted by the tracking-start extension; it stays ready but can never post again, so the batch's one ready row adds nothing further
+      value: &rowR10
+        id: 41000000-0000-4000-8000-000000000010
+        rowNumber: 1
+        state: ready
+        sourceFields: { Date: 03/15/2026, Description: SYNTHETIC MARKET, Amount: "-15.00", Type: DEBIT }
+        normalized: { postedDate: "2026-03-15", merchant: SYNTHETIC MARKET, money: { amountMinor: "-1500", currency: USD } }
+        issues: []
+        kind: purchase
+        kindSource: bank
+        assignment: { categoryId: 30000000-0000-4000-8000-000000000010, origin: rule, ruleId: 60000000-0000-4000-8000-000000000003, ruleRevision: "1" }
+        duplicate: { status: none, matches: [], decision: null }
+        transferCandidate: null
+        excluded: false
+        reviewRequired: false
+        postedTransactionId: 10000000-0000-4000-8000-00000000000a
+        version: "2"
+    Fixture_RowMarchChooseType:
+      summary: The remaining March row; the extension posted nothing for it and it still needs a type
+      value: &rowR11
+        id: 41000000-0000-4000-8000-000000000011
+        rowNumber: 2
+        state: held
+        sourceFields: { Date: 03/20/2026, Description: SYNTHETIC ONLINE CREDIT, Amount: "30.00", Type: CREDIT }
+        normalized: { postedDate: "2026-03-20", merchant: SYNTHETIC ONLINE CREDIT, money: { amountMinor: "3000", currency: USD } }
+        issues:
+          - { code: choose_type, field: kind, message: "Choose income, refund or transfer." }
+        kind: null
+        kindSource: null
+        assignment: null
+        duplicate: { status: none, matches: [], decision: null }
+        transferCandidate: null
+        excluded: false
+        reviewRequired: false
+        postedTransactionId: null
+        version: "1"
     Fixture_Preferences:
       value: &prefs { displayName: Personal space, density: standard, currency: USD, timezone: America/New_York, version: "1" }
 
@@ -4454,8 +4579,45 @@ components:
       value: *importI4
     GetImport_failed:
       value: *importI5
+    GetImport_openAfterBaselinePosting:
+      value: *importI6
     ListImportRows_heldRows:
       value: { items: [*rowR1, *rowR2, *rowR3], nextCursor: null, importVersion: "5" }
+    ListImportRows_baselinePosted:
+      summary: One row already posted by the tracking-start extension and one still held
+      value: { items: [*rowR10, *rowR11], nextCursor: null, importVersion: "3" }
+    ListImportRows_refundLinkedCounterpart:
+      summary: A linked refund cannot become a transfer until its existing link is deliberately resolved
+      value:
+        items:
+          - id: 41000000-0000-4000-8000-000000000020
+            rowNumber: 1
+            state: held
+            sourceFields: { Date: "05/01/2026", Description: SYNTHETIC MOVE, Amount: "-45.99", Type: DEBIT }
+            normalized: { postedDate: "2026-05-01", merchant: SYNTHETIC MOVE, money: { amountMinor: "-4599", currency: USD } }
+            issues: [{ code: possible_transfer, field: null, message: Review the suggested transfer match. }]
+            kind: purchase
+            kindSource: bank
+            assignment: null
+            duplicate: { status: none, matches: [], decision: null }
+            transferCandidate:
+              transactionId: 10000000-0000-4000-8000-000000000020
+              accountId: 20000000-0000-4000-8000-000000000002
+              counterpartKind: refund
+              counterpartVersion: "2"
+              requiresKindChange: true
+              eligible: false
+              ineligibleReason: refund_links_present
+              postedDate: "2026-05-02"
+              money: { amountMinor: "4599", currency: USD }
+              daysApart: 1
+              decision: null
+            excluded: false
+            reviewRequired: false
+            postedTransactionId: null
+            version: "1"
+        nextCursor: null
+        importVersion: "2"
     ListImportRows_committedWithPair:
       summary: The committed April card file, including the confirmed transfer counterpart
       value: { items: [*rowC1, *rowC2, *rowC3], nextCursor: null, importVersion: "4" }
@@ -4479,6 +4641,9 @@ components:
     CommitImport_committed:
       summary: 2026-05-01 15:00 - the card file posted with its transfer pair
       value: { import: *importI4, financeRevision: "12" }
+    CommitImport_committedAfterBaselinePosting:
+      summary: 17:30 - this commit posted only the remaining row; `added` still counts both postings once each
+      value: { import: *importI6c, financeRevision: "31" }
     DiscardImport_discarded:
       summary: 15:40 - review contents deleted; only the outcome remains
       value:
@@ -4698,6 +4863,8 @@ paths:
                   $ref: "#/components/examples/Problem_invalid_credentials"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
         "422":
@@ -4733,10 +4900,16 @@ paths:
               examples:
                 extended:
                   $ref: "#/components/examples/SignedInSession"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -4755,10 +4928,16 @@ paths:
           headers:
             Set-Cookie:
               $ref: "#/components/headers/ClearSessionCookie"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -4862,6 +5041,10 @@ paths:
               examples:
                 clientIdConflict:
                   $ref: "#/components/examples/Problem_client_id_conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -4954,6 +5137,10 @@ paths:
                   $ref: "#/components/examples/Problem_reactivation_required"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "428":
@@ -4980,6 +5167,8 @@ paths:
       responses:
         "204":
           description: Deleted; a deletion audit event was written
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -4997,6 +5186,10 @@ paths:
                   $ref: "#/components/examples/Problem_account_in_use"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -5065,6 +5258,13 @@ paths:
           for the day before it, and optionally held earlier rows from one
           import preview posted in the same transaction.
         Archived accounts return 409 `reactivation_required`.
+
+        A held-row selection this command cannot use fails as a conflict or a
+        validation error here; it never reports the import endpoints' 410. A
+        preview that expired, was discarded, already posted a selected row or
+        moved to another version returns 409 `preview_stale`; a selection that
+        does not fit the requested start returns 422 `validation_failed`.
+        Nothing is posted and the baseline is unchanged in either case.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -5119,6 +5319,10 @@ paths:
                   $ref: "#/components/examples/Problem_preview_stale"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "428":
@@ -5160,6 +5364,8 @@ paths:
               examples:
                 archived:
                   $ref: "#/components/examples/ArchiveAccount_archived"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -5168,6 +5374,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -5202,6 +5412,8 @@ paths:
               examples:
                 reactivated:
                   $ref: "#/components/examples/ReactivateAccount_reactivated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -5210,6 +5422,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -5324,6 +5540,10 @@ paths:
                   $ref: "#/components/examples/Problem_client_id_conflict"
                 reactivationRequired:
                   $ref: "#/components/examples/Problem_reactivation_required"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -5394,6 +5614,8 @@ paths:
               examples:
                 stillDifferent:
                   $ref: "#/components/examples/RecheckCheckpoint_stillDifferent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -5411,6 +5633,10 @@ paths:
                   $ref: "#/components/examples/Problem_reactivation_required"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "428":
@@ -5636,6 +5862,10 @@ paths:
                   $ref: "#/components/examples/Problem_client_id_conflict"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           description: Semantic validation failed; nothing was saved
           content:
@@ -5685,6 +5915,8 @@ paths:
               examples:
                 ruleAssigned:
                   $ref: "#/components/examples/ReturnTransactionToRules_ruleAssigned"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -5702,6 +5934,10 @@ paths:
                   $ref: "#/components/examples/Problem_reactivation_required"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -5778,6 +6014,10 @@ paths:
                   $ref: "#/components/examples/Problem_category_archived"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           description: Semantic validation failed; nothing was saved
           content:
@@ -5844,6 +6084,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "428":
@@ -5994,6 +6238,10 @@ paths:
               examples:
                 reactivationRequired:
                   $ref: "#/components/examples/Problem_reactivation_required"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           description: Semantic validation failed; nothing was saved
           content:
@@ -6099,6 +6347,10 @@ paths:
                   $ref: "#/components/examples/Problem_reactivation_required"
         "410":
           $ref: "#/components/responses/Gone"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -6183,6 +6435,10 @@ paths:
                   $ref: "#/components/examples/Problem_kind_change_confirmation_required"
                 reactivationRequired:
                   $ref: "#/components/examples/Problem_reactivation_required"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -6245,6 +6501,8 @@ paths:
           headers:
             Cache-Control:
               $ref: "#/components/headers/NoStore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -6253,6 +6511,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -6329,6 +6591,10 @@ paths:
                   $ref: "#/components/examples/Problem_client_id_conflict"
                 refundAlreadyLinked:
                   $ref: "#/components/examples/Problem_refund_already_linked"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -6388,6 +6654,8 @@ paths:
           headers:
             Cache-Control:
               $ref: "#/components/headers/NoStore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -6396,6 +6664,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -6502,6 +6774,10 @@ paths:
                   $ref: "#/components/examples/Problem_client_id_conflict"
                 categoryNameTaken:
                   $ref: "#/components/examples/Problem_category_name_taken"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -6593,6 +6869,10 @@ paths:
                   $ref: "#/components/examples/Problem_category_name_taken"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "428":
@@ -6617,6 +6897,8 @@ paths:
       responses:
         "204":
           description: Deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -6636,6 +6918,10 @@ paths:
                   $ref: "#/components/examples/Problem_category_protected"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -6747,6 +7033,10 @@ paths:
                   $ref: "#/components/examples/Problem_category_protected"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           description: Semantic validation failed; nothing was saved
           content:
@@ -6796,6 +7086,8 @@ paths:
               examples:
                 reactivated:
                   $ref: "#/components/examples/ReactivateCategory_reactivated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -6804,6 +7096,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -6914,6 +7210,10 @@ paths:
                   $ref: "#/components/examples/Problem_client_id_conflict"
                 categoryArchived:
                   $ref: "#/components/examples/Problem_category_archived"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           description: Semantic validation failed; nothing was saved
           content:
@@ -6978,6 +7278,10 @@ paths:
               examples:
                 ruleSetChanged:
                   $ref: "#/components/examples/Problem_rule_set_changed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -7069,6 +7373,10 @@ paths:
                   $ref: "#/components/examples/Problem_category_archived"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           description: Semantic validation failed; nothing was saved
           content:
@@ -7117,6 +7425,8 @@ paths:
               examples:
                 archived:
                   $ref: "#/components/examples/ArchiveRule_archived"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -7125,6 +7435,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -7205,6 +7519,10 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           description: Semantic validation failed; nothing was saved
           content:
@@ -7312,6 +7630,8 @@ paths:
           headers:
             Cache-Control:
               $ref: "#/components/headers/NoStore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -7329,6 +7649,10 @@ paths:
                   $ref: "#/components/examples/Problem_preview_stale"
         "410":
           $ref: "#/components/responses/Gone"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -7463,6 +7787,10 @@ paths:
               examples:
                 categoryArchived:
                   $ref: "#/components/examples/Problem_category_archived"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           description: Semantic validation failed; nothing was saved
           content:
@@ -7537,6 +7865,10 @@ paths:
                   $ref: "#/components/examples/Problem_category_archived"
         "410":
           $ref: "#/components/responses/Gone"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -7619,6 +7951,12 @@ paths:
         preview or completed outcome (200) instead of a second write.
         Archived accounts return 409 `reactivation_required`. Parsing may
         finish after the response (`status: parsing`); poll the batch.
+
+        A completed import keeps recognising its file after the stored copy is
+        deleted. A cancelled, expired or failed attempt stops recognising it,
+        even if some of its rows had already posted through a tracking-start
+        extension; uploading that file again then creates a new preview and
+        those earlier postings are offered as ordinary suspected duplicates.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -7662,8 +8000,6 @@ paths:
               examples:
                 created:
                   $ref: "#/components/examples/CreateImport_created"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -7697,7 +8033,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
-          $ref: "#/components/responses/ServiceUnavailable"
+          $ref: "#/components/responses/UploadServiceUnavailable"
   /imports/{importId}:
     parameters:
       - $ref: "#/components/parameters/ImportId"
@@ -7725,6 +8061,8 @@ paths:
                   $ref: "#/components/examples/GetImport_committed"
                 failed:
                   $ref: "#/components/examples/GetImport_failed"
+                openAfterBaselinePosting:
+                  $ref: "#/components/examples/GetImport_openAfterBaselinePosting"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "404":
@@ -7762,6 +8100,10 @@ paths:
                   $ref: "#/components/examples/ListImportRows_heldRows"
                 committedWithPair:
                   $ref: "#/components/examples/ListImportRows_committedWithPair"
+                baselinePosted:
+                  $ref: "#/components/examples/ListImportRows_baselinePosted"
+                refundLinkedCounterpart:
+                  $ref: "#/components/examples/ListImportRows_refundLinkedCounterpart"
           headers:
             Cache-Control:
               $ref: "#/components/headers/NoStore"
@@ -7795,6 +8137,13 @@ paths:
         `If-Match` carries the import batch version (as for commit); the
         response `ETag` is the new batch version. A confirmed bank-ID duplicate
         cannot be included (409 `duplicate_source_identity`).
+
+        A save that matches the current version acknowledges the changed
+        suggestions displayed for this row, including re-saving a choice that
+        is already visible. It does not resolve another row's issues, and it
+        does not approve a duplicate or transfer candidate that this same edit
+        newly discovers: that candidate is held for its own decision. An empty
+        body is rejected.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -7851,6 +8200,10 @@ paths:
           $ref: "#/components/responses/GoneImport"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "428":
@@ -7871,6 +8224,10 @@ paths:
         is incompatible with the type, and excluded rows, are skipped and
         reported. `If-Match` carries the import batch version. Preview must be
         open (409 `import_not_open`).
+
+        For each row it updates, this acknowledges only that row's changed type
+        suggestion. A changed duplicate or transfer suggestion on the same row
+        still needs its own decision, and skipped rows acknowledge nothing.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -7921,6 +8278,10 @@ paths:
           $ref: "#/components/responses/GoneImport"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "428":
@@ -7959,6 +8320,8 @@ paths:
               examples:
                 refreshed:
                   $ref: "#/components/examples/RefreshImport_refreshed"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -7978,6 +8341,10 @@ paths:
           $ref: "#/components/responses/GoneImport"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -8023,6 +8390,10 @@ paths:
               examples:
                 committed:
                   $ref: "#/components/examples/CommitImport_committed"
+                committedAfterBaselinePosting:
+                  $ref: "#/components/examples/CommitImport_committedAfterBaselinePosting"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -8046,6 +8417,10 @@ paths:
           $ref: "#/components/responses/GoneImport"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -8063,6 +8438,11 @@ paths:
         Deletes the upload and unfinished review contents; keeps only a
         filename/date/outcome entry. Discarding a follow-up never touches the
         original import's excluded rows.
+
+        Only unfinished work is removed. Any row this preview already posted
+        while extending the tracking start keeps its transaction and the source
+        evidence behind it as financial history, which no longer appears here
+        or in this import's rows (410).
       security:
         - sessionCookie: []
           csrfToken: []
@@ -8083,6 +8463,8 @@ paths:
               examples:
                 discarded:
                   $ref: "#/components/examples/DiscardImport_discarded"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -8100,6 +8482,10 @@ paths:
                   $ref: "#/components/examples/Problem_import_not_open"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
         "500":
@@ -8177,6 +8563,10 @@ paths:
                   $ref: "#/components/examples/Problem_client_id_conflict"
                 reactivationRequired:
                   $ref: "#/components/examples/Problem_reactivation_required"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "500":
@@ -8253,6 +8643,10 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "412":
           $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "428":

@@ -37,6 +37,8 @@ export function requireTransaction(db: SqliteDatabase, id: string): TransactionR
 }
 
 export function transactionDto(db: SqliteDatabase, row: TransactionRow) {
+  const provenance = db.prepare("SELECT posting_import_id, posting_row_number FROM import_postings WHERE transaction_id = ?")
+    .get(row.id) as { posting_import_id: string; posting_row_number: bigint } | undefined;
   const transfer = db.prepare("SELECT pair_id FROM transfer_legs WHERE transaction_id = ?")
     .get(row.id) as { pair_id: string } | undefined;
   const refund = db.prepare("SELECT id, purchase_id FROM refund_links WHERE refund_id = ?")
@@ -50,7 +52,8 @@ export function transactionDto(db: SqliteDatabase, row: TransactionRow) {
     money: money(row.amount_cents), kind: row.kind, lifecycle: row.lifecycle, categoryId: row.category_id,
     assignment: { origin: row.assignment_origin, assignedAt: isoTimestamp(Number(row.assigned_at)),
       ruleId: row.rule_id, ruleRevision: row.rule_revision === null ? null : String(row.rule_revision) },
-    note: row.note, importId: null, sourceRowNumber: null,
+    note: row.note, importId: provenance?.posting_import_id ?? null,
+    sourceRowNumber: provenance === undefined ? null : Number(provenance.posting_row_number),
     transferPairId: transfer?.pair_id ?? null,
     refundLink: refund === undefined ? null : { linkId: refund.id, purchaseId: refund.purchase_id },
     linkedRefundCount: Number(refunds.n),

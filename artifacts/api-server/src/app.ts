@@ -2,7 +2,10 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import cookieParser from "cookie-parser";
 import { DatabaseBusyError } from "@workspace/db";
 
-import { LIST_BODY_PATHS, MAX_JSON_BODY_BYTES, MAX_LIST_BODY_BYTES } from "./config.js";
+import {
+  BASELINE_BODY_PATHS, LIST_BODY_PATHS,
+  MAX_BASELINE_BODY_BYTES, MAX_JSON_BODY_BYTES, MAX_LIST_BODY_BYTES,
+} from "./config.js";
 import type { AppDependencies } from "./deps.js";
 import { ProblemError, sendProblem } from "./lib/problem.js";
 import { securityHeaders } from "./lib/security.js";
@@ -17,6 +20,7 @@ import { accountRoutes } from "./routes/accounts.js";
 import { budgetRoutes } from "./routes/budgets.js";
 import { categoryRoutes } from "./routes/categories.js";
 import { healthRoutes } from "./routes/health.js";
+import { importRoutes } from "./routes/imports.js";
 import { linkRoutes } from "./routes/links.js";
 import { preferencesRoutes } from "./routes/preferences.js";
 import { ruleRoutes } from "./routes/rules.js";
@@ -47,9 +51,17 @@ export function createApp(deps: AppDependencies): Express {
   // signed-in owner gets the larger bound on the two list-carrying routes.
   api.use(attachSession(deps));
   const json = express.json({ limit: MAX_JSON_BODY_BYTES, strict: true, type: "application/json" });
-  const listJson = express.json({ limit: MAX_LIST_BODY_BYTES, strict: true, type: "application/json" });
-  api.use((req: Request, res: Response, next: NextFunction) =>
-    (req.session !== undefined && LIST_BODY_PATHS.some(path => path.test(req.path)) ? listJson : json)(req, res, next));
+  // Each larger bound belongs to the routes that need it and to no others, so a
+  // route is never able to accept a body merely because a neighbour must.
+  const larger: [RegExp[], express.RequestHandler][] = [
+    [LIST_BODY_PATHS, express.json({ limit: MAX_LIST_BODY_BYTES, strict: true, type: "application/json" })],
+    [BASELINE_BODY_PATHS, express.json({ limit: MAX_BASELINE_BODY_BYTES, strict: true, type: "application/json" })],
+  ];
+  api.use((req: Request, res: Response, next: NextFunction) => {
+    const match = req.session === undefined ? undefined
+      : larger.find(([paths]) => paths.some(path => path.test(req.path)));
+    (match?.[1] ?? json)(req, res, next);
+  });
 
   api.use(healthRoutes(deps));
   api.use(sessionRoutes(deps));
@@ -57,6 +69,7 @@ export function createApp(deps: AppDependencies): Express {
   api.use(accountRoutes(deps));
   api.use(categoryRoutes(deps));
   api.use(budgetRoutes(deps));
+  api.use(importRoutes(deps));
   api.use(ruleRoutes(deps));
   api.use(summaryRoutes(deps));
   api.use(transactionRoutes(deps));

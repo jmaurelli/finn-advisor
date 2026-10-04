@@ -6,10 +6,12 @@ export {
 } from "./errors.js";
 export { assertLocalFilesystem, parseMountinfo } from "./filesystem.js";
 export {
+  clearStatementCache,
   closeLedger,
   LEDGER_FILE_NAME,
   ledgerPath,
   openLedger,
+  STATEMENT_CACHE_LIMIT,
   type OpenLedgerOptions,
   type SqliteDatabase,
 } from "./open.js";
