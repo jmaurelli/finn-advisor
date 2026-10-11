@@ -36,7 +36,7 @@ export type { ChangedSuggestion };
 
 type RowDto = ImportRowPage["items"][number];
 
-interface StoredImportRow {
+export interface StoredImportRow {
   id: string;
   import_id: string;
   source_row_number: bigint;
@@ -69,7 +69,11 @@ interface StoredImportRow {
   version: bigint;
 }
 
-function rowDto(row: StoredImportRow): RowDto {
+/**
+ * One stored row as the contract describes it. Shared with the ledger export,
+ * so a row reads the same whether it is reviewed or downloaded.
+ */
+export function importRowDto(row: StoredImportRow): RowDto {
   return {
     id: row.id,
     rowNumber: Number(row.source_row_number),
@@ -156,7 +160,7 @@ export function listImportRows(
   const page = rows.slice(0, query.limit);
   const last = page.at(-1);
   return {
-    items: page.map(rowDto),
+    items: page.map(importRowDto),
     nextCursor: rows.length <= query.limit || last === undefined ? null : Buffer.from(JSON.stringify({
       v: 1, importId, state: query.state ?? null, rowNumber: Number(last.source_row_number),
     })).toString("base64url"),
@@ -511,7 +515,7 @@ export function saveImportRow(
   const savedBatch = recordReviewActivity(context, batch);
   return {
     version: savedBatch.version,
-    body: check({ row: rowDto(saved), import: importBatchDto(db, savedBatch) }),
+    body: check({ row: importRowDto(saved), import: importBatchDto(db, savedBatch) }),
   };
 }
 

@@ -20,6 +20,8 @@ import { accountRoutes } from "./routes/accounts.js";
 import { budgetRoutes } from "./routes/budgets.js";
 import { categoryRoutes } from "./routes/categories.js";
 import { healthRoutes } from "./routes/health.js";
+import { operationsRoutes } from "./routes/operations.js";
+import { exportRoutes } from "./routes/exports.js";
 import { importRoutes } from "./routes/imports.js";
 import { linkRoutes } from "./routes/links.js";
 import { preferencesRoutes } from "./routes/preferences.js";
@@ -64,6 +66,8 @@ export function createApp(deps: AppDependencies): Express {
   });
 
   api.use(healthRoutes(deps));
+  api.use(operationsRoutes(deps));
+  api.use(exportRoutes(deps));
   api.use(sessionRoutes(deps));
   api.use(preferencesRoutes(deps));
   api.use(accountRoutes(deps));

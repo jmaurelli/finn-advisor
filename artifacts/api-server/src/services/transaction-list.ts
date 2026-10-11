@@ -23,7 +23,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const KINDS = ["purchase", "refund", "income", "transfer"];
 const ORIGINS = ["manual", "rule", "unassigned", "system"];
 const LIFECYCLES = ["active", "void", "all"];
-const PARAMETERS = new Set(["accountId", "categoryId", "kind", "origin", "lifecycle", "month", "from", "to", "q", "cursor", "limit"]);
+/** The filters both the list and the CSV export accept. */
+const FILTER_PARAMETERS = ["accountId", "categoryId", "kind", "origin", "lifecycle", "month", "from", "to", "q"];
+/** The list adds paging; the export has no pages, so it does not accept them. */
+const PARAMETERS = new Set([...FILTER_PARAMETERS, "cursor", "limit"]);
+const EXPORT_PARAMETERS = new Set(FILTER_PARAMETERS);
 
 export interface TransactionFilters {
   accountId?: string;
@@ -61,10 +65,16 @@ function registerMatchText(db: SqliteDatabase): void {
 }
 
 /** Parses the query into canonical filters. Repeated or unknown parameters are malformed. */
-export function parseTransactionQuery(query: Record<string, unknown>) {
+/**
+ * Validates the filters shared by the list and the CSV export. Deliberately
+ * one implementation: two validators for the same filters would drift, and an
+ * export that accepted a filter the list rejected would quietly answer a
+ * different question than the screen asked.
+ */
+function parseFilters(query: Record<string, unknown>, allowed: ReadonlySet<string>) {
   const text: Record<string, string> = {};
   for (const [key, value] of Object.entries(query)) {
-    if (!PARAMETERS.has(key)) badQuery("A filter in this request is not supported.");
+    if (!allowed.has(key)) badQuery("A filter in this request is not supported.");
     if (typeof value !== "string") badQuery(`Give ${key} once, as plain text.`);
     text[key] = value;
   }
@@ -101,6 +111,25 @@ export function parseTransactionQuery(query: Record<string, unknown>) {
       detail: "The end date is exclusive, so it must come after the start date.",
       fieldErrors: [{ path: "/to", code: "invalid_value", message: "Choose a date after the start date." }] });
   }
+  parseSearchText(text, filters);
+  return { filters, text };
+}
+
+export function parseTransactionQuery(query: Record<string, unknown>) {
+  const { filters, text } = parseFilters(query, PARAMETERS);
+  const limit = text["limit"] ?? "50";
+  if (!/^[1-9][0-9]{0,2}$/.test(limit) || Number(limit) > 200) badQuery("Choose a page size from 1 to 200.");
+  const cursor = text["cursor"];
+  if (cursor !== undefined && !/^[A-Za-z0-9_-]{1,512}$/.test(cursor)) invalidCursor();
+  return { filters, limit: Number(limit), cursor };
+}
+
+/** The export's filters. No cursor or page size: it is not a page. */
+export function parseExportQuery(query: Record<string, unknown>): TransactionFilters {
+  return parseFilters(query, EXPORT_PARAMETERS).filters;
+}
+
+function parseSearchText(text: Record<string, string>, filters: TransactionFilters): void {
   if (text["q"] !== undefined) {
     const q = text["q"];
     if (q.length === 0 || [...q].length > 200 || !wellFormed(q)) badQuery("Search for 1 to 200 characters.");
@@ -110,14 +139,9 @@ export function parseTransactionQuery(query: Record<string, unknown>) {
       fieldErrors: [{ path: "/q", code: "invalid_value", message: "Enter text to search for." }] });
     filters.q = normalized;
   }
-  const limit = text["limit"] ?? "50";
-  if (!/^[1-9][0-9]{0,2}$/.test(limit) || Number(limit) > 200) badQuery("Choose a page size from 1 to 200.");
-  const cursor = text["cursor"];
-  if (cursor !== undefined && !/^[A-Za-z0-9_-]{1,512}$/.test(cursor)) invalidCursor();
-  return { filters, limit: Number(limit), cursor };
 }
 
-function predicate(filters: TransactionFilters): { sql: string; params: unknown[] } {
+export function transactionPredicate(filters: TransactionFilters): { sql: string; params: unknown[] } {
   const clauses: string[] = [];
   const params: unknown[] = [];
   const add = (sql: string, ...values: unknown[]) => { clauses.push(sql); params.push(...values); };
@@ -153,7 +177,7 @@ export function pageTransactions(db: SqliteDatabase, filters: TransactionFilters
     if (cursor.scope !== scope) throw problem({ status: 400, code: "cursor_filter_mismatch",
       title: "The list filters changed", detail: "Reload the list from the first page." });
   }
-  const where = predicate(filters);
+  const where = transactionPredicate(filters);
   const rows = db.prepare(`SELECT * FROM transactions WHERE ${where.sql}
     ${cursor === undefined ? "" : "AND (posted_date, id) < (?, ?)"}
     ORDER BY posted_date DESC, id DESC LIMIT ?`).all(...where.params,
@@ -173,7 +197,7 @@ export function listTransactions(db: SqliteDatabase, query: Record<string, unkno
   registerMatchText(db);
   const { filters, limit, cursor } = parseTransactionQuery(query);
   const scope = creationDigest({ list: "transactions", ...filters });
-  const where = predicate(filters);
+  const where = transactionPredicate(filters);
   const totals = db.prepare(`SELECT COUNT(*) AS n,
       COALESCE(SUM(CASE WHEN lifecycle = 'active' AND kind = 'purchase' THEN -amount_cents ELSE 0 END), 0) AS purchases,
       COALESCE(SUM(CASE WHEN lifecycle = 'active' AND kind = 'refund' THEN amount_cents ELSE 0 END), 0) AS refunds,
