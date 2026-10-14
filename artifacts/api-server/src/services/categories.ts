@@ -148,6 +148,13 @@ export function categoryReferences(db: SqliteDatabase, id: string): BlockingRefe
   const rules = db.prepare("SELECT DISTINCT rule_id AS id FROM rule_revisions WHERE category_id = ? ORDER BY rule_id")
     .all(id) as { id: string }[];
   if (rules.length > 0) blocking.push({ kind: "rule", count: rules.length, ids: rules.slice(0, 20).map(row => row.id) });
+  // A preview row's proposed category and the retained evidence of a posted
+  // row both keep pointing here, so the category must stay resolvable.
+  const importRows = db.prepare(`SELECT id FROM import_rows WHERE category_id = ?
+    UNION SELECT id FROM import_source_records WHERE category_id = ?
+    ORDER BY 1`).all(id, id) as { id: string }[];
+  if (importRows.length > 0) blocking.push({ kind: "import_row", count: importRows.length,
+    ids: importRows.slice(0, 20).map(row => row.id) });
   // Repair/run snapshots can retain a category only inside JSON (for example, a saved scope).
   for (const table of ["repair_previews", "rule_runs"] as const) {
     const saved = db.prepare(`SELECT DISTINCT p.id FROM ${table} p, json_tree(p.preview_json) j

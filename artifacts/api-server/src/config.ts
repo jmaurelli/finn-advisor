@@ -29,6 +29,21 @@ export const MAX_JSON_BODY_BYTES = 64 * 1024;
 export const MAX_LIST_BODY_BYTES = 256 * 1024;
 // Case-insensitive with an optional trailing slash, as Express routes them.
 export const LIST_BODY_PATHS = [/^\/rules\/reorder\/?$/i, /^\/categories\/[^/]+\/archive\/?$/i];
+/**
+ * Extending coverage backward may name up to 25,000 held rows, which the
+ * contract allows. Measured, that body is 953 KB compactly serialized and
+ * 1,124 KB pretty-printed, so this bound clears the larger of the two with room
+ * for a longer version counter. It is deliberately one route's bound rather
+ * than a larger general limit: no other write gains anything from it.
+ */
+export const MAX_BASELINE_BODY_BYTES = 1536 * 1024;
+export const BASELINE_BODY_PATHS = [/^\/accounts\/[^/]+\/baseline\/?$/i];
+/**
+ * The one route that carries a file instead of JSON. Listed here rather than
+ * relaxing the content-type rule generally, so no other write can arrive as
+ * anything but JSON.
+ */
+export const MULTIPART_PATHS = [/^\/imports\/?$/i];
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const environment = readEnvironment(env);

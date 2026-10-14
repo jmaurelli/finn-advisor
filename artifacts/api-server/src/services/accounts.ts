@@ -242,6 +242,15 @@ export function setArchived(
     account.id,
   );
 
+  // Keep the invalidation after reactivation; only a preview refresh may
+  // acknowledge the account lifecycle change. This is not review activity.
+  if (archived) {
+    db.prepare(`UPDATE import_batches SET captured_account_archived = 1,
+      version = version + 1, updated_at = ?
+      WHERE account_id = ? AND status IN ('receiving', 'parsing', 'preview')
+        AND captured_account_archived = 0`).run(now, account.id);
+  }
+
   writeAudit(db, context.newId, now, {
     entityType: "account",
     entityId: account.id,
@@ -266,9 +275,9 @@ export function setArchived(
  * own creation deliberately do not block, which is why they carry the account
  * id as a plain recorded string with no foreign key.
  *
- * The kinds this stage cannot check yet - imports and source identities -
- * are declared in `pending-stages.ts` and
- * guarded by a test that fails as soon as their tables exist.
+ * Imports block as well, whether or not they posted anything: an import is
+ * evidence the account was used, and its retained rows point at categories and
+ * rules that must stay resolvable.
  */
 export function blockingReferences(db: SqliteDatabase, accountId: string): BlockingReference[] {
   const blocking: BlockingReference[] = [];
@@ -317,6 +326,30 @@ export function blockingReferences(db: SqliteDatabase, accountId: string): Block
   ).all(accountId) as { id: string }[];
   if (legs.length > 0) {
     blocking.push({ kind: "transfer_leg", count: legs.length, ids: legs.slice(0, 20).map((row) => row.id) });
+  }
+
+  // Every import of this account, in any state: a cancelled or failed attempt
+  // is still a record that the account was used.
+  const importCount = db
+    .prepare("SELECT COUNT(*) AS n FROM import_batches WHERE account_id = ?")
+    .get(accountId) as { n: bigint };
+  if (importCount.n > 0n) {
+    const imports = db.prepare(
+      "SELECT id FROM import_batches WHERE account_id = ? ORDER BY created_at, id LIMIT 20",
+    ).all(accountId) as { id: string }[];
+    blocking.push({ kind: "import", count: Number(importCount.n), ids: imports.map((row) => row.id) });
+  }
+
+  // Bank identities recorded for this account. These outlive a void, so they
+  // block even when every transaction they name has been voided.
+  const identityCount = db
+    .prepare("SELECT COUNT(*) AS n FROM source_identities WHERE account_id = ?")
+    .get(accountId) as { n: bigint };
+  if (identityCount.n > 0n) {
+    const identities = db.prepare(
+      "SELECT transaction_id AS id FROM source_identities WHERE account_id = ? ORDER BY transaction_id LIMIT 20",
+    ).all(accountId) as { id: string }[];
+    blocking.push({ kind: "source_identity", count: Number(identityCount.n), ids: identities.map((row) => row.id) });
   }
 
   return blocking;

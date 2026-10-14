@@ -1,4 +1,4 @@
-import type { Assignment } from "../domain/assignment.js";
+import type { Assignment, AssignmentRule } from "../domain/assignment.js";
 import { normalizeMatchText, normalizeMerchantText } from "../domain/assignment.js";
 import { isCalendarDate } from "../domain/dates.js";
 import { parseMoney, MoneyFormatError } from "../domain/money.js";
@@ -17,8 +17,13 @@ function invalid(path: string, message: string): never {
     detail: message, fieldErrors: [{ path, code: "invalid_value", message }] });
 }
 
-/** Internal only: the caller owns the unit of work, including rollback on any failure. */
-export function postTransaction(context: CommandContext, input: PostingInput) {
+/**
+ * Internal only: the caller owns the unit of work, including rollback on any
+ * failure. A caller posting many rows may pass the rule set it already read
+ * for that same transaction; see `assignByRules`.
+ */
+export function postTransaction(context: CommandContext, input: PostingInput,
+  origin: "system" | "import" = "system", rules?: readonly AssignmentRule[]) {
   const { db, now } = context;
   if (!db.inTransaction) throw new Error("Posting requires the caller's write transaction");
   const value = validateBody(PostingInput, input);
@@ -42,7 +47,7 @@ export function postTransaction(context: CommandContext, input: PostingInput) {
   }
   const assignment: Assignment = value.category?.mode === "category"
     ? { origin: "manual", categoryId: requireManualCategory(db, value.category.categoryId), ruleId: null, ruleRevision: null }
-    : assignByRules(db, { accountId: account.id, kind: value.kind, merchantText: value.merchant });
+    : assignByRules(db, { accountId: account.id, kind: value.kind, merchantText: value.merchant }, rules);
   const revision = nextCounter(account.ledger_revision);
   const id = context.newId().toLowerCase();
   db.prepare(`INSERT INTO transactions (id, account_id, posted_date, merchant_text, normalized_text,
@@ -55,15 +60,14 @@ export function postTransaction(context: CommandContext, input: PostingInput) {
       value.note == null ? null : normalizeMatchText(value.note), value.postedDate, amount, now, now);
   const row = requireTransaction(db, id);
   const snapshot = transactionSnapshot(db, row);
-  // The contract calls the initial posting event "imported". System source and
-  // null provenance distinguish synthetic postings from Stage 5 bank imports.
+  // Synthetic postings keep their system origin; bank imports retain their own origin.
   db.prepare(`INSERT INTO assignment_events (id, transaction_id, occurred_at, event_type, source,
     reason, before_json, after_json, before_category_id, after_category_id, rule_id, rule_revision, related_ids_json)
-    VALUES (?, ?, ?, 'imported', 'system', NULL, NULL, ?, NULL, ?, ?, ?, '[]')`)
-    .run(context.newId().toLowerCase(), id, now, JSON.stringify(snapshot), assignment.categoryId,
+    VALUES (?, ?, ?, 'imported', ?, NULL, NULL, ?, NULL, ?, ?, ?, '[]')`)
+    .run(context.newId().toLowerCase(), id, now, origin, JSON.stringify(snapshot), assignment.categoryId,
       assignment.ruleId, assignment.ruleRevision);
   writeAudit(db, () => context.newId().toLowerCase(), now, { entityType: "transaction", entityId: id,
-    accountId: account.id, eventType: "transaction_posted", origin: "system", after: snapshot });
+    accountId: account.id, eventType: "transaction_posted", origin, after: snapshot });
   db.prepare("UPDATE accounts SET ledger_revision = ? WHERE id = ?").run(revision, account.id);
   bumpFinanceRevision(db);
   const result = transactionDto(db, row);

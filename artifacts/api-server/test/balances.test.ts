@@ -257,7 +257,7 @@ describe("changing an account's starting point", () => {
     expect((await balance(id, "2026-02-27")).body).toMatchObject({ coverage: "outside_coverage" });
   });
 
-  it("refuses held rows rather than silently ignoring them", async () => {
+  it("refuses a selection from a preview that does not exist", async () => {
     const { id, etag } = await createAccount(api, { trackingStartDate: "2026-04-01" });
     const response = await api.request(`/api/accounts/${id}/baseline`, {
       method: "POST",
@@ -273,8 +273,8 @@ describe("changing an account's starting point", () => {
         },
       },
     });
-    // Imports arrive in stage 5. Reporting success for rows that were never
-    // posted would be worse than refusing.
+    // There is no preview with that id. Reporting success for rows that were
+    // never posted would be worse than refusing the whole command.
     expect(response.status).toBe(422);
     const body = response.body as { fieldErrors: { path: string }[] };
     expect(body.fieldErrors[0].path).toBe("/heldRows/importId");

@@ -79,6 +79,10 @@ export function openLedger(options: OpenLedgerOptions): SqliteDatabase {
 
     db.pragma(`busy_timeout = ${busyTimeoutMs}`);
     assertPragma(db, "busy_timeout", BigInt(busyTimeoutMs));
+
+    // Installed last, so the self-test above compiles its throwaway statements
+    // against the table it drops rather than leaving them in the cache.
+    installStatementCache(db);
   } catch (error) {
     db.close();
     if (isBusy(error)) {
@@ -89,6 +93,99 @@ export function openLedger(options: OpenLedgerOptions): SqliteDatabase {
     throw error;
   }
   return db;
+}
+
+/**
+ * How many compiled statements one connection keeps.
+ *
+ * Every entry holds a native `sqlite3_stmt`, so this is a memory bound as much
+ * as a hit-rate one. The services prepare a few hundred distinct texts, and a
+ * handful of places build SQL whose shape varies with the size of a batch;
+ * those varying texts are exactly what must not accumulate, so the cache is a
+ * least-recently-used one rather than an unbounded map.
+ */
+export const STATEMENT_CACHE_LIMIT = 512;
+
+const statementCaches = new WeakMap<SqliteDatabase, Map<string, BetterSqlite3.Statement>>();
+
+/**
+ * Compiles each distinct SQL text once per connection.
+ *
+ * Preparing a statement is SQLite's parser and planner running again, and the
+ * services prepare inside their loops: posting an imported row compiles a
+ * dozen statements, so a large import spent most of its time in the compiler
+ * rather than on the work. Reuse is safe here because nothing in this codebase
+ * mutates a statement (no `pluck`, `raw`, `expand`, `safeIntegers` or
+ * `iterate`) and `run`/`get`/`all` each finish before they return, so no two
+ * callers can hold the same statement mid-execution.
+ *
+ * What a statement *does* capture is the connection as it stood when it was
+ * compiled: its column list, its integer mode, its custom functions and the
+ * pragmas that compile into the plan, foreign key enforcement among them.
+ * Anything that changes those has to drop the cache, so the wrappers below do,
+ * and `migrate` drops it after each schema change.
+ */
+function installStatementCache(db: SqliteDatabase): void {
+  const cache = new Map<string, BetterSqlite3.Statement>();
+  statementCaches.set(db, cache);
+  const compile = db.prepare.bind(db) as (source: string) => BetterSqlite3.Statement;
+  Object.defineProperty(db, "prepare", {
+    configurable: true,
+    writable: true,
+    value: (source: string): BetterSqlite3.Statement => {
+      const cached = cache.get(source);
+      if (cached !== undefined) {
+        // Re-inserting marks it as the most recently used.
+        cache.delete(source);
+        cache.set(source, cached);
+        return cached;
+      }
+      const statement = compile(source);
+      cache.set(source, statement);
+      if (cache.size > STATEMENT_CACHE_LIMIT) {
+        const oldest = cache.keys().next();
+        if (!oldest.done) cache.delete(oldest.value);
+      }
+      return statement;
+    },
+  });
+
+  // `defaultSafeIntegers` is the sharpest of these: a statement compiled while
+  // it was off keeps returning doubles, which is the one failure this module
+  // exists to prevent. Custom functions and assigning pragmas are bound into
+  // the compiled plan the same way.
+  for (const name of ["defaultSafeIntegers", "function", "aggregate", "table", "loadExtension"] as const) {
+    const original = (db[name] as (...args: unknown[]) => unknown).bind(db);
+    Object.defineProperty(db, name, {
+      configurable: true,
+      writable: true,
+      value: (...args: unknown[]): unknown => {
+        const result = original(...args);
+        cache.clear();
+        return result;
+      },
+    });
+  }
+  const pragma = db.pragma.bind(db);
+  Object.defineProperty(db, "pragma", {
+    configurable: true,
+    writable: true,
+    value: (source: string, options?: BetterSqlite3.PragmaOptions): unknown => {
+      const result = pragma(source, options as never);
+      if (source.includes("=")) cache.clear();
+      return result;
+    },
+  });
+}
+
+/**
+ * Drops every compiled statement on this connection.
+ *
+ * Called after the schema changes, because a statement compiled against the
+ * old schema still describes the old columns.
+ */
+export function clearStatementCache(db: SqliteDatabase): void {
+  statementCaches.get(db)?.clear();
 }
 
 /** The closest ancestor that exists, so the filesystem check has something real to resolve. */
@@ -153,5 +250,6 @@ export function closeLedger(db: SqliteDatabase): void {
     db.pragma("wal_checkpoint(TRUNCATE)");
   } finally {
     db.close();
+    clearStatementCache(db);
   }
 }

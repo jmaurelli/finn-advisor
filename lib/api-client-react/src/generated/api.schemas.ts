@@ -198,6 +198,7 @@ export const ProblemCode = {
   unsupported_file_format: 'unsupported_file_format',
   login_throttled: 'login_throttled',
   service_busy: 'service_busy',
+  storage_unavailable: 'storage_unavailable',
   maintenance: 'maintenance',
   internal_error: 'internal_error',
 } as const;
@@ -1945,7 +1946,12 @@ export const ImportStatus = {
 export interface ImportRowCounts {
   /** @minimum 0 */
   total: number;
-  /** @minimum 0 */
+  /**
+     * Rows with nothing left to decide. This includes rows already posted
+     * by extending the tracking start, so it is not a count of the
+     * transactions a commit would still add.
+     * @minimum 0
+     */
   ready: number;
   /** @minimum 0 */
   held: number;
@@ -1954,16 +1960,27 @@ export interface ImportRowCounts {
 }
 
 /**
- * Immutable once committed; follow-ups never change it.
+ * Immutable once committed; follow-ups never change it. Later repairs,
+ * voids and unlinks never change it either: it records what this import
+ * did, not what survives now.
  */
 export interface ImportOutcome {
   /** @minimum 0 */
   rows: number;
-  /** @minimum 0 */
+  /**
+     * Transactions this import posted, counting rows posted earlier by a
+     * tracking-start extension and rows posted by the final commit once
+     * each.
+     * @minimum 0
+     */
   added: number;
   /** @minimum 0 */
   excluded: number;
-  /** @minimum 0 */
+  /**
+     * Transfer pairings this import performed on those same posting
+     * paths, not pairs that happen to still be linked afterwards.
+     * @minimum 0
+     */
   pairedTransfers: number;
   completedAt: Timestamp;
 }
@@ -2198,6 +2215,7 @@ export const ImportTransferCandidateIneligibleReason = {
   already_paired: 'already_paired',
   reactivation_required: 'reactivation_required',
   voided: 'voided',
+  refund_links_present: 'refund_links_present',
 } as const;
 
 /**
@@ -2216,6 +2234,9 @@ export const ImportTransferCandidateDecision = {
  * pairs the two at commit and, if `requiresKindChange`, changes the
  * counterpart's type to `transfer` in the same transaction. Commit
  * rechecks `counterpartVersion` and the counterpart account's state.
+ * A counterpart with refund links cannot be reclassified. Resolve those
+ * links separately and refresh, or reject the suggestion; confirmation
+ * never removes refund links automatically.
  */
 export interface ImportTransferCandidate {
   transactionId: Uuid;
@@ -2223,7 +2244,7 @@ export interface ImportTransferCandidate {
   counterpartKind: TransactionKind;
   counterpartVersion: EntityVersion;
   requiresKindChange: boolean;
-  /** False when the counterpart is voided, already paired, or on an archived account and would need a type change. */
+  /** False when the counterpart is voided, already paired, has refund links that a type change would invalidate, or is on an archived account and would need a type change. */
   eligible: boolean;
   /** @nullable */
   ineligibleReason: ImportTransferCandidateIneligibleReason;
@@ -2288,7 +2309,13 @@ export interface ImportRow {
   excluded: boolean;
   /** Suggestions changed after a refresh. */
   reviewRequired: boolean;
-  /** @nullable */
+  /**
+     * Set when this row was already posted while extending the account's
+     * tracking start backward. Such a row stays `ready` for as long as
+     * the preview is open, but it is immutable and can never post a
+     * second time; commit skips it.
+     * @nullable
+     */
   postedTransactionId: string | null;
   version: EntityVersion;
 }
@@ -2501,7 +2528,9 @@ export type NotFoundResponse = Problem;
 export type GoneResponse = Problem;
 
 /**
- * The preview expired or its review contents were deleted; upload again
+ * The preview expired or its review contents were deleted; upload again.
+ * Transactions it had already posted are unaffected and remain readable
+ * as ordinary ledger history.
  */
 export type GoneImportResponse = Problem;
 
@@ -2539,6 +2568,13 @@ export type TooManyRequestsResponse = Problem;
  * Temporarily busy (database lock wait) or in maintenance; bounded retry honoring Retry-After
  */
 export type ServiceUnavailableResponse = Problem;
+
+/**
+ * Temporarily busy or in maintenance, or the upload store itself is
+ * unusable. `storage_unavailable` is the store's fault, not the file's,
+ * and carries no Retry-After: it needs an operator, not a retry.
+ */
+export type UploadServiceUnavailableResponse = Problem;
 
 /**
  * Unexpected fault, reported with a safe message and request ID; never a partial result

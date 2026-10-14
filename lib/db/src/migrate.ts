@@ -4,13 +4,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { MigrationError } from "./errors.js";
-import type { SqliteDatabase } from "./open.js";
+import { clearStatementCache, type SqliteDatabase } from "./open.js";
 
 /**
  * The schema this build of the application expects. Readiness compares it with
  * what is actually applied; a mismatch is reported instead of guessed at.
  */
-export const EXPECTED_SCHEMA_VERSION = 4;
+export const EXPECTED_SCHEMA_VERSION = 5;
 
 const MIGRATION_FILE_PATTERN = /^(\d{4})_[a-z0-9_]+\.sql$/;
 
@@ -191,6 +191,9 @@ export function migrate(
       throw error;
     }
     restoreForeignKeys(db, foreignKeysWereOn);
+    // The schema just changed, so every statement compiled against the old one
+    // is describing columns that may no longer be there.
+    clearStatementCache(db);
     appliedNow.push(migration.name);
   }
 

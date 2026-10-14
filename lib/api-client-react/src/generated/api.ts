@@ -198,6 +198,7 @@ import type {
   UpdateRuleHeaders,
   UpdateRuleRequest,
   UpdateTransactionNoteHeaders,
+  UploadServiceUnavailableResponse,
   ValidationFailedResponse
 } from './api.schemas';
 
@@ -581,7 +582,7 @@ return customFetch<SignedInSession>(getLoginUrl(),
 
 export const getLoginMutationKey = () => ['login'] as const;
 
-export const getLoginMutationOptions = <TError = ErrorType<BadRequestResponse | Problem | ForbiddenResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getLoginMutationOptions = <TError = ErrorType<BadRequestResponse | Problem | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,LoginMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,LoginMutationVariables, TContext> => {
 
@@ -610,13 +611,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type LoginMutationResult = NonNullable<Awaited<ReturnType<typeof login>>>
     export type LoginMutationBody = BodyType<LoginRequest>
-    export type LoginMutationError = ErrorType<BadRequestResponse | Problem | ForbiddenResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type LoginMutationError = ErrorType<BadRequestResponse | Problem | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type LoginMutationVariables = {data: BodyType<LoginRequest>}
 
     /**
  * @summary Sign in with the owner password
  */
-export const useLogin = <TError = ErrorType<BadRequestResponse | Problem | ForbiddenResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useLogin = <TError = ErrorType<BadRequestResponse | Problem | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,LoginMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof login>>,
@@ -658,7 +659,7 @@ export const recordSessionActivity = async ( options?: Parameters<typeof customF
 
 export const getRecordSessionActivityMutationKey = () => ['recordSessionActivity'] as const;
 
-export const getRecordSessionActivityMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getRecordSessionActivityMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSessionActivity>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof recordSessionActivity>>, TError,void, TContext> => {
 
@@ -687,13 +688,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RecordSessionActivityMutationResult = NonNullable<Awaited<ReturnType<typeof recordSessionActivity>>>
 
-    export type RecordSessionActivityMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type RecordSessionActivityMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>
 
 
     /**
  * @summary Report recent owner interaction
  */
-export const useRecordSessionActivity = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useRecordSessionActivity = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSessionActivity>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof recordSessionActivity>>,
@@ -732,7 +733,7 @@ export const logout = async ( options?: Parameters<typeof customFetch>[1]): Prom
 
 export const getLogoutMutationKey = () => ['logout'] as const;
 
-export const getLogoutMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getLogoutMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext> => {
 
@@ -761,13 +762,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type LogoutMutationResult = NonNullable<Awaited<ReturnType<typeof logout>>>
 
-    export type LogoutMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type LogoutMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>
 
 
     /**
  * @summary Sign out and revoke this session
  */
-export const useLogout = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useLogout = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof logout>>,
@@ -930,7 +931,7 @@ return customFetch<AccountResult>(getCreateAccountUrl(),
 
 export const getCreateAccountMutationKey = () => ['createAccount'] as const;
 
-export const getCreateAccountMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateAccountMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAccount>>, TError,CreateAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createAccount>>, TError,CreateAccountMutationVariables, TContext> => {
 
@@ -959,13 +960,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateAccountMutationResult = NonNullable<Awaited<ReturnType<typeof createAccount>>>
     export type CreateAccountMutationBody = BodyType<CreateAccountRequest>
-    export type CreateAccountMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateAccountMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateAccountMutationVariables = {data: BodyType<CreateAccountRequest>}
 
     /**
  * @summary Create an account with its tracking start and opening balance
  */
-export const useCreateAccount = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateAccount = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAccount>>, TError,CreateAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createAccount>>,
@@ -1124,7 +1125,7 @@ return customFetch<AccountResult>(getUpdateAccountUrl(accountId),
 
 export const getUpdateAccountMutationKey = () => ['updateAccount'] as const;
 
-export const getUpdateAccountMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getUpdateAccountMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAccount>>, TError,UpdateAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateAccount>>, TError,UpdateAccountMutationVariables, TContext> => {
 
@@ -1153,13 +1154,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateAccountMutationResult = NonNullable<Awaited<ReturnType<typeof updateAccount>>>
     export type UpdateAccountMutationBody = BodyType<UpdateAccountRequest>
-    export type UpdateAccountMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type UpdateAccountMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type UpdateAccountMutationVariables = {accountId: string;data: BodyType<UpdateAccountRequest>;headers: UpdateAccountHeaders}
 
     /**
  * @summary Edit account labels
  */
-export const useUpdateAccount = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useUpdateAccount = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAccount>>, TError,UpdateAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateAccount>>,
@@ -1218,7 +1219,7 @@ return customFetch<void>(getDeleteAccountUrl(accountId),
 
 export const getDeleteAccountMutationKey = () => ['deleteAccount'] as const;
 
-export const getDeleteAccountMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getDeleteAccountMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext> => {
 
@@ -1247,13 +1248,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>
 
-    export type DeleteAccountMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type DeleteAccountMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type DeleteAccountMutationVariables = {accountId: string;headers: DeleteAccountHeaders}
 
     /**
  * @summary Permanently delete a completely unused account
  */
-export const useDeleteAccount = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useDeleteAccount = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteAccount>>,
@@ -1403,6 +1404,13 @@ export const getChangeAccountBaselineUrl = (accountId: string,) => {
  *   for the day before it, and optionally held earlier rows from one
  *   import preview posted in the same transaction.
  * Archived accounts return 409 `reactivation_required`.
+ *
+ * A held-row selection this command cannot use fails as a conflict or a
+ * validation error here; it never reports the import endpoints' 410. A
+ * preview that expired, was discarded, already posted a selected row or
+ * moved to another version returns 409 `preview_stale`; a selection that
+ * does not fit the requested start returns 422 `validation_failed`.
+ * Nothing is posted and the baseline is unchanged in either case.
  * @summary Correct the opening balance, move the start later, or extend coverage backward
  */
 export const changeAccountBaseline = async (accountId: string,
@@ -1438,7 +1446,7 @@ return customFetch<BaselineChangeResult>(getChangeAccountBaselineUrl(accountId),
 
 export const getChangeAccountBaselineMutationKey = () => ['changeAccountBaseline'] as const;
 
-export const getChangeAccountBaselineMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getChangeAccountBaselineMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeAccountBaseline>>, TError,ChangeAccountBaselineMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof changeAccountBaseline>>, TError,ChangeAccountBaselineMutationVariables, TContext> => {
 
@@ -1467,13 +1475,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ChangeAccountBaselineMutationResult = NonNullable<Awaited<ReturnType<typeof changeAccountBaseline>>>
     export type ChangeAccountBaselineMutationBody = BodyType<BaselineChangeRequest>
-    export type ChangeAccountBaselineMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ChangeAccountBaselineMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ChangeAccountBaselineMutationVariables = {accountId: string;data: BodyType<BaselineChangeRequest>;headers: ChangeAccountBaselineHeaders}
 
     /**
  * @summary Correct the opening balance, move the start later, or extend coverage backward
  */
-export const useChangeAccountBaseline = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useChangeAccountBaseline = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeAccountBaseline>>, TError,ChangeAccountBaselineMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof changeAccountBaseline>>,
@@ -1532,7 +1540,7 @@ return customFetch<AccountResult>(getArchiveAccountUrl(accountId),
 
 export const getArchiveAccountMutationKey = () => ['archiveAccount'] as const;
 
-export const getArchiveAccountMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getArchiveAccountMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveAccount>>, TError,ArchiveAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof archiveAccount>>, TError,ArchiveAccountMutationVariables, TContext> => {
 
@@ -1561,13 +1569,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ArchiveAccountMutationResult = NonNullable<Awaited<ReturnType<typeof archiveAccount>>>
 
-    export type ArchiveAccountMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ArchiveAccountMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ArchiveAccountMutationVariables = {accountId: string;headers: ArchiveAccountHeaders}
 
     /**
  * @summary Archive an account
  */
-export const useArchiveAccount = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useArchiveAccount = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveAccount>>, TError,ArchiveAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof archiveAccount>>,
@@ -1622,7 +1630,7 @@ return customFetch<AccountResult>(getReactivateAccountUrl(accountId),
 
 export const getReactivateAccountMutationKey = () => ['reactivateAccount'] as const;
 
-export const getReactivateAccountMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getReactivateAccountMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactivateAccount>>, TError,ReactivateAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof reactivateAccount>>, TError,ReactivateAccountMutationVariables, TContext> => {
 
@@ -1651,13 +1659,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ReactivateAccountMutationResult = NonNullable<Awaited<ReturnType<typeof reactivateAccount>>>
 
-    export type ReactivateAccountMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ReactivateAccountMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ReactivateAccountMutationVariables = {accountId: string;headers: ReactivateAccountHeaders}
 
     /**
  * @summary Reactivate an archived account
  */
-export const useReactivateAccount = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useReactivateAccount = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactivateAccount>>, TError,ReactivateAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof reactivateAccount>>,
@@ -1826,7 +1834,7 @@ return customFetch<CheckpointResult>(getCreateCheckpointUrl(accountId),
 
 export const getCreateCheckpointMutationKey = () => ['createCheckpoint'] as const;
 
-export const getCreateCheckpointMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateCheckpointMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckpoint>>, TError,CreateCheckpointMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createCheckpoint>>, TError,CreateCheckpointMutationVariables, TContext> => {
 
@@ -1855,13 +1863,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateCheckpointMutationResult = NonNullable<Awaited<ReturnType<typeof createCheckpoint>>>
     export type CreateCheckpointMutationBody = BodyType<CreateCheckpointRequest>
-    export type CreateCheckpointMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateCheckpointMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateCheckpointMutationVariables = {accountId: string;data: BodyType<CreateCheckpointRequest>}
 
     /**
  * @summary Record a statement closing balance and compare it
  */
-export const useCreateCheckpoint = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateCheckpoint = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckpoint>>, TError,CreateCheckpointMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createCheckpoint>>,
@@ -2030,7 +2038,7 @@ return customFetch<CheckpointResult>(getRecheckCheckpointUrl(accountId,checkpoin
 
 export const getRecheckCheckpointMutationKey = () => ['recheckCheckpoint'] as const;
 
-export const getRecheckCheckpointMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getRecheckCheckpointMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recheckCheckpoint>>, TError,RecheckCheckpointMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof recheckCheckpoint>>, TError,RecheckCheckpointMutationVariables, TContext> => {
 
@@ -2059,13 +2067,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RecheckCheckpointMutationResult = NonNullable<Awaited<ReturnType<typeof recheckCheckpoint>>>
 
-    export type RecheckCheckpointMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type RecheckCheckpointMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type RecheckCheckpointMutationVariables = {accountId: string;checkpointId: string;headers: RecheckCheckpointHeaders}
 
     /**
  * @summary Record a new explicit comparison against the current balance
  */
-export const useRecheckCheckpoint = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useRecheckCheckpoint = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recheckCheckpoint>>, TError,RecheckCheckpointMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof recheckCheckpoint>>,
@@ -2572,7 +2580,7 @@ return customFetch<CategorizeResult>(getCategorizeTransactionUrl(transactionId),
 
 export const getCategorizeTransactionMutationKey = () => ['categorizeTransaction'] as const;
 
-export const getCategorizeTransactionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCategorizeTransactionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof categorizeTransaction>>, TError,CategorizeTransactionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof categorizeTransaction>>, TError,CategorizeTransactionMutationVariables, TContext> => {
 
@@ -2601,13 +2609,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CategorizeTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof categorizeTransaction>>>
     export type CategorizeTransactionMutationBody = BodyType<CategorizeRequest>
-    export type CategorizeTransactionMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CategorizeTransactionMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CategorizeTransactionMutationVariables = {transactionId: string;data: BodyType<CategorizeRequest>;headers: CategorizeTransactionHeaders}
 
     /**
  * @summary Manually set a category, optionally creating a rule in the same save
  */
-export const useCategorizeTransaction = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCategorizeTransaction = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof categorizeTransaction>>, TError,CategorizeTransactionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof categorizeTransaction>>,
@@ -2665,7 +2673,7 @@ return customFetch<TransactionResult>(getReturnTransactionToRulesUrl(transaction
 
 export const getReturnTransactionToRulesMutationKey = () => ['returnTransactionToRules'] as const;
 
-export const getReturnTransactionToRulesMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getReturnTransactionToRulesMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof returnTransactionToRules>>, TError,ReturnTransactionToRulesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof returnTransactionToRules>>, TError,ReturnTransactionToRulesMutationVariables, TContext> => {
 
@@ -2694,13 +2702,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ReturnTransactionToRulesMutationResult = NonNullable<Awaited<ReturnType<typeof returnTransactionToRules>>>
 
-    export type ReturnTransactionToRulesMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ReturnTransactionToRulesMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ReturnTransactionToRulesMutationVariables = {transactionId: string;headers: ReturnTransactionToRulesHeaders}
 
     /**
  * @summary Remove manual protection and let the current rules categorize it
  */
-export const useReturnTransactionToRules = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useReturnTransactionToRules = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof returnTransactionToRules>>, TError,ReturnTransactionToRulesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof returnTransactionToRules>>,
@@ -2763,7 +2771,7 @@ return customFetch<ClassifyResult>(getClassifyTransactionUrl(transactionId),
 
 export const getClassifyTransactionMutationKey = () => ['classifyTransaction'] as const;
 
-export const getClassifyTransactionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getClassifyTransactionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof classifyTransaction>>, TError,ClassifyTransactionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof classifyTransaction>>, TError,ClassifyTransactionMutationVariables, TContext> => {
 
@@ -2792,13 +2800,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ClassifyTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof classifyTransaction>>>
     export type ClassifyTransactionMutationBody = BodyType<ClassifyRequest>
-    export type ClassifyTransactionMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ClassifyTransactionMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ClassifyTransactionMutationVariables = {transactionId: string;data: BodyType<ClassifyRequest>;headers: ClassifyTransactionHeaders}
 
     /**
  * @summary Change a transaction's type without changing its amount
  */
-export const useClassifyTransaction = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useClassifyTransaction = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof classifyTransaction>>, TError,ClassifyTransactionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof classifyTransaction>>,
@@ -2854,7 +2862,7 @@ return customFetch<TransactionResult>(getUpdateTransactionNoteUrl(transactionId)
 
 export const getUpdateTransactionNoteMutationKey = () => ['updateTransactionNote'] as const;
 
-export const getUpdateTransactionNoteMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getUpdateTransactionNoteMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransactionNote>>, TError,UpdateTransactionNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateTransactionNote>>, TError,UpdateTransactionNoteMutationVariables, TContext> => {
 
@@ -2883,13 +2891,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateTransactionNoteMutationResult = NonNullable<Awaited<ReturnType<typeof updateTransactionNote>>>
     export type UpdateTransactionNoteMutationBody = BodyType<UpdateNoteRequest>
-    export type UpdateTransactionNoteMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type UpdateTransactionNoteMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type UpdateTransactionNoteMutationVariables = {transactionId: string;data: BodyType<UpdateNoteRequest>;headers: UpdateTransactionNoteHeaders}
 
     /**
  * @summary Set or clear a note
  */
-export const useUpdateTransactionNote = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useUpdateTransactionNote = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransactionNote>>, TError,UpdateTransactionNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateTransactionNote>>,
@@ -3188,7 +3196,7 @@ return customFetch<RepairPreview>(getCreateRepairPreviewUrl(transactionId),
 
 export const getCreateRepairPreviewMutationKey = () => ['createRepairPreview'] as const;
 
-export const getCreateRepairPreviewMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateRepairPreviewMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRepairPreview>>, TError,CreateRepairPreviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createRepairPreview>>, TError,CreateRepairPreviewMutationVariables, TContext> => {
 
@@ -3217,13 +3225,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateRepairPreviewMutationResult = NonNullable<Awaited<ReturnType<typeof createRepairPreview>>>
     export type CreateRepairPreviewMutationBody = BodyType<RepairRequest>
-    export type CreateRepairPreviewMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateRepairPreviewMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateRepairPreviewMutationVariables = {transactionId: string;data: BodyType<RepairRequest>}
 
     /**
  * @summary Preview an amount/date correction, void or restore
  */
-export const useCreateRepairPreview = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateRepairPreview = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRepairPreview>>, TError,CreateRepairPreviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createRepairPreview>>,
@@ -3384,7 +3392,7 @@ return customFetch<RepairApplyResult>(getApplyRepairUrl(repairId),
 
 export const getApplyRepairMutationKey = () => ['applyRepair'] as const;
 
-export const getApplyRepairMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getApplyRepairMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyRepair>>, TError,ApplyRepairMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof applyRepair>>, TError,ApplyRepairMutationVariables, TContext> => {
 
@@ -3413,13 +3421,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ApplyRepairMutationResult = NonNullable<Awaited<ReturnType<typeof applyRepair>>>
     export type ApplyRepairMutationBody = BodyType<ApplyRepairRequest>
-    export type ApplyRepairMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ApplyRepairMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ApplyRepairMutationVariables = {repairId: string;data: BodyType<ApplyRepairRequest>}
 
     /**
  * @summary Confirm and apply a reviewed repair atomically
  */
-export const useApplyRepair = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useApplyRepair = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyRepair>>, TError,ApplyRepairMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof applyRepair>>,
@@ -3478,7 +3486,7 @@ return customFetch<TransferPairResult>(getCreateTransferPairUrl(),
 
 export const getCreateTransferPairMutationKey = () => ['createTransferPair'] as const;
 
-export const getCreateTransferPairMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateTransferPairMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransferPair>>, TError,CreateTransferPairMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createTransferPair>>, TError,CreateTransferPairMutationVariables, TContext> => {
 
@@ -3507,13 +3515,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateTransferPairMutationResult = NonNullable<Awaited<ReturnType<typeof createTransferPair>>>
     export type CreateTransferPairMutationBody = BodyType<CreateTransferPairRequest>
-    export type CreateTransferPairMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateTransferPairMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateTransferPairMutationVariables = {data: BodyType<CreateTransferPairRequest>}
 
     /**
  * @summary Confirm two transactions as one transfer
  */
-export const useCreateTransferPair = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateTransferPair = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransferPair>>, TError,CreateTransferPairMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createTransferPair>>,
@@ -3671,7 +3679,7 @@ return customFetch<UnlinkResult>(getDeleteTransferPairUrl(transferPairId),
 
 export const getDeleteTransferPairMutationKey = () => ['deleteTransferPair'] as const;
 
-export const getDeleteTransferPairMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getDeleteTransferPairMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTransferPair>>, TError,DeleteTransferPairMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteTransferPair>>, TError,DeleteTransferPairMutationVariables, TContext> => {
 
@@ -3700,13 +3708,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteTransferPairMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTransferPair>>>
 
-    export type DeleteTransferPairMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type DeleteTransferPairMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type DeleteTransferPairMutationVariables = {transferPairId: string;headers: DeleteTransferPairHeaders}
 
     /**
  * @summary Unlink a transfer pair
  */
-export const useDeleteTransferPair = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useDeleteTransferPair = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTransferPair>>, TError,DeleteTransferPairMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteTransferPair>>,
@@ -3763,7 +3771,7 @@ return customFetch<RefundLinkResult>(getCreateRefundLinkUrl(),
 
 export const getCreateRefundLinkMutationKey = () => ['createRefundLink'] as const;
 
-export const getCreateRefundLinkMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateRefundLinkMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRefundLink>>, TError,CreateRefundLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createRefundLink>>, TError,CreateRefundLinkMutationVariables, TContext> => {
 
@@ -3792,13 +3800,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateRefundLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createRefundLink>>>
     export type CreateRefundLinkMutationBody = BodyType<CreateRefundLinkRequest>
-    export type CreateRefundLinkMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateRefundLinkMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateRefundLinkMutationVariables = {data: BodyType<CreateRefundLinkRequest>}
 
     /**
  * @summary Link a refund to the purchase it refunds
  */
-export const useCreateRefundLink = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateRefundLink = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRefundLink>>, TError,CreateRefundLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createRefundLink>>,
@@ -3954,7 +3962,7 @@ return customFetch<UnlinkResult>(getDeleteRefundLinkUrl(refundLinkId),
 
 export const getDeleteRefundLinkMutationKey = () => ['deleteRefundLink'] as const;
 
-export const getDeleteRefundLinkMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getDeleteRefundLinkMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRefundLink>>, TError,DeleteRefundLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteRefundLink>>, TError,DeleteRefundLinkMutationVariables, TContext> => {
 
@@ -3983,13 +3991,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteRefundLinkMutationResult = NonNullable<Awaited<ReturnType<typeof deleteRefundLink>>>
 
-    export type DeleteRefundLinkMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type DeleteRefundLinkMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type DeleteRefundLinkMutationVariables = {refundLinkId: string;headers: DeleteRefundLinkHeaders}
 
     /**
  * @summary Remove a refund link
  */
-export const useDeleteRefundLink = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useDeleteRefundLink = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRefundLink>>, TError,DeleteRefundLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteRefundLink>>,
@@ -4153,7 +4161,7 @@ return customFetch<CategoryResult>(getCreateCategoryUrl(),
 
 export const getCreateCategoryMutationKey = () => ['createCategory'] as const;
 
-export const getCreateCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCategory>>, TError,CreateCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createCategory>>, TError,CreateCategoryMutationVariables, TContext> => {
 
@@ -4182,13 +4190,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof createCategory>>>
     export type CreateCategoryMutationBody = BodyType<CreateCategoryRequest>
-    export type CreateCategoryMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateCategoryMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateCategoryMutationVariables = {data: BodyType<CreateCategoryRequest>}
 
     /**
  * @summary Create an expense category
  */
-export const useCreateCategory = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateCategory = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCategory>>, TError,CreateCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createCategory>>,
@@ -4345,7 +4353,7 @@ return customFetch<CategoryResult>(getUpdateCategoryUrl(categoryId),
 
 export const getUpdateCategoryMutationKey = () => ['updateCategory'] as const;
 
-export const getUpdateCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getUpdateCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCategory>>, TError,UpdateCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateCategory>>, TError,UpdateCategoryMutationVariables, TContext> => {
 
@@ -4374,13 +4382,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof updateCategory>>>
     export type UpdateCategoryMutationBody = BodyType<UpdateCategoryRequest>
-    export type UpdateCategoryMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type UpdateCategoryMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type UpdateCategoryMutationVariables = {categoryId: string;data: BodyType<UpdateCategoryRequest>;headers: UpdateCategoryHeaders}
 
     /**
  * @summary Edit name, description or color
  */
-export const useUpdateCategory = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useUpdateCategory = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCategory>>, TError,UpdateCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateCategory>>,
@@ -4437,7 +4445,7 @@ return customFetch<void>(getDeleteCategoryUrl(categoryId),
 
 export const getDeleteCategoryMutationKey = () => ['deleteCategory'] as const;
 
-export const getDeleteCategoryMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getDeleteCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCategory>>, TError,DeleteCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteCategory>>, TError,DeleteCategoryMutationVariables, TContext> => {
 
@@ -4466,13 +4474,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCategory>>>
 
-    export type DeleteCategoryMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type DeleteCategoryMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type DeleteCategoryMutationVariables = {categoryId: string;headers: DeleteCategoryHeaders}
 
     /**
  * @summary Delete an unused custom category
  */
-export const useDeleteCategory = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useDeleteCategory = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCategory>>, TError,DeleteCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteCategory>>,
@@ -4637,7 +4645,7 @@ return customFetch<ArchiveCategoryResult>(getArchiveCategoryUrl(categoryId),
 
 export const getArchiveCategoryMutationKey = () => ['archiveCategory'] as const;
 
-export const getArchiveCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getArchiveCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveCategory>>, TError,ArchiveCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof archiveCategory>>, TError,ArchiveCategoryMutationVariables, TContext> => {
 
@@ -4666,13 +4674,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ArchiveCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof archiveCategory>>>
     export type ArchiveCategoryMutationBody = BodyType<ArchiveCategoryRequest>
-    export type ArchiveCategoryMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ArchiveCategoryMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ArchiveCategoryMutationVariables = {categoryId: string;data: BodyType<ArchiveCategoryRequest>;headers: ArchiveCategoryHeaders}
 
     /**
  * @summary Archive a category with its rule resolutions and budget stop
  */
-export const useArchiveCategory = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useArchiveCategory = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveCategory>>, TError,ArchiveCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof archiveCategory>>,
@@ -4730,7 +4738,7 @@ return customFetch<CategoryResult>(getReactivateCategoryUrl(categoryId),
 
 export const getReactivateCategoryMutationKey = () => ['reactivateCategory'] as const;
 
-export const getReactivateCategoryMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getReactivateCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactivateCategory>>, TError,ReactivateCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof reactivateCategory>>, TError,ReactivateCategoryMutationVariables, TContext> => {
 
@@ -4759,13 +4767,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ReactivateCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof reactivateCategory>>>
 
-    export type ReactivateCategoryMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ReactivateCategoryMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ReactivateCategoryMutationVariables = {categoryId: string;headers: ReactivateCategoryHeaders}
 
     /**
  * @summary Reactivate an archived custom category
  */
-export const useReactivateCategory = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useReactivateCategory = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactivateCategory>>, TError,ReactivateCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof reactivateCategory>>,
@@ -4932,7 +4940,7 @@ return customFetch<RuleResult>(getCreateRuleUrl(),
 
 export const getCreateRuleMutationKey = () => ['createRule'] as const;
 
-export const getCreateRuleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateRuleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRule>>, TError,CreateRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createRule>>, TError,CreateRuleMutationVariables, TContext> => {
 
@@ -4961,13 +4969,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateRuleMutationResult = NonNullable<Awaited<ReturnType<typeof createRule>>>
     export type CreateRuleMutationBody = BodyType<CreateRuleRequest>
-    export type CreateRuleMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateRuleMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateRuleMutationVariables = {data: BodyType<CreateRuleRequest>}
 
     /**
  * @summary Create a rule at the end of the order
  */
-export const useCreateRule = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateRule = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRule>>, TError,CreateRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createRule>>,
@@ -5023,7 +5031,7 @@ return customFetch<RuleList>(getReorderRulesUrl(),
 
 export const getReorderRulesMutationKey = () => ['reorderRules'] as const;
 
-export const getReorderRulesMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getReorderRulesMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderRules>>, TError,ReorderRulesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof reorderRules>>, TError,ReorderRulesMutationVariables, TContext> => {
 
@@ -5052,13 +5060,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ReorderRulesMutationResult = NonNullable<Awaited<ReturnType<typeof reorderRules>>>
     export type ReorderRulesMutationBody = BodyType<ReorderRulesRequest>
-    export type ReorderRulesMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ReorderRulesMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ReorderRulesMutationVariables = {data: BodyType<ReorderRulesRequest>}
 
     /**
  * @summary Set the complete order of active rules
  */
-export const useReorderRules = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useReorderRules = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderRules>>, TError,ReorderRulesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof reorderRules>>,
@@ -5216,7 +5224,7 @@ return customFetch<RuleResult>(getUpdateRuleUrl(ruleId),
 
 export const getUpdateRuleMutationKey = () => ['updateRule'] as const;
 
-export const getUpdateRuleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getUpdateRuleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRule>>, TError,UpdateRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateRule>>, TError,UpdateRuleMutationVariables, TContext> => {
 
@@ -5245,13 +5253,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateRuleMutationResult = NonNullable<Awaited<ReturnType<typeof updateRule>>>
     export type UpdateRuleMutationBody = BodyType<UpdateRuleRequest>
-    export type UpdateRuleMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type UpdateRuleMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type UpdateRuleMutationVariables = {ruleId: string;data: BodyType<UpdateRuleRequest>;headers: UpdateRuleHeaders}
 
     /**
  * @summary Edit, enable or disable a rule
  */
-export const useUpdateRule = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useUpdateRule = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRule>>, TError,UpdateRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateRule>>,
@@ -5308,7 +5316,7 @@ return customFetch<RuleResult>(getArchiveRuleUrl(ruleId),
 
 export const getArchiveRuleMutationKey = () => ['archiveRule'] as const;
 
-export const getArchiveRuleMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getArchiveRuleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveRule>>, TError,ArchiveRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof archiveRule>>, TError,ArchiveRuleMutationVariables, TContext> => {
 
@@ -5337,13 +5345,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ArchiveRuleMutationResult = NonNullable<Awaited<ReturnType<typeof archiveRule>>>
 
-    export type ArchiveRuleMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ArchiveRuleMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ArchiveRuleMutationVariables = {ruleId: string;headers: ArchiveRuleHeaders}
 
     /**
  * @summary Retire a rule
  */
-export const useArchiveRule = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useArchiveRule = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveRule>>, TError,ArchiveRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof archiveRule>>,
@@ -5504,7 +5512,7 @@ return customFetch<RuleRun>(getCreateRuleRunUrl(),
 
 export const getCreateRuleRunMutationKey = () => ['createRuleRun'] as const;
 
-export const getCreateRuleRunMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateRuleRunMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRuleRun>>, TError,CreateRuleRunMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createRuleRun>>, TError,CreateRuleRunMutationVariables, TContext> => {
 
@@ -5533,13 +5541,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateRuleRunMutationResult = NonNullable<Awaited<ReturnType<typeof createRuleRun>>>
     export type CreateRuleRunMutationBody = BodyType<CreateRuleRunRequest>
-    export type CreateRuleRunMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateRuleRunMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateRuleRunMutationVariables = {data: BodyType<CreateRuleRunRequest>}
 
     /**
  * @summary Preview reapplying the current rules to past transactions
  */
-export const useCreateRuleRun = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateRuleRun = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRuleRun>>, TError,CreateRuleRunMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createRuleRun>>,
@@ -5800,7 +5808,7 @@ export const applyRuleRun = async (ruleRunId: string, options?: Parameters<typeo
 
 export const getApplyRuleRunMutationKey = () => ['applyRuleRun'] as const;
 
-export const getApplyRuleRunMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getApplyRuleRunMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyRuleRun>>, TError,ApplyRuleRunMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof applyRuleRun>>, TError,ApplyRuleRunMutationVariables, TContext> => {
 
@@ -5829,13 +5837,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ApplyRuleRunMutationResult = NonNullable<Awaited<ReturnType<typeof applyRuleRun>>>
 
-    export type ApplyRuleRunMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ApplyRuleRunMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ApplyRuleRunMutationVariables = {ruleRunId: string}
 
     /**
  * @summary Confirm and apply a reviewed rule run atomically
  */
-export const useApplyRuleRun = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useApplyRuleRun = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyRuleRun>>, TError,ApplyRuleRunMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof applyRuleRun>>,
@@ -6112,7 +6120,7 @@ return customFetch<BudgetChangePreview>(getPreviewBudgetChangeUrl(categoryId),
 
 export const getPreviewBudgetChangeMutationKey = () => ['previewBudgetChange'] as const;
 
-export const getPreviewBudgetChangeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getPreviewBudgetChangeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewBudgetChange>>, TError,PreviewBudgetChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof previewBudgetChange>>, TError,PreviewBudgetChangeMutationVariables, TContext> => {
 
@@ -6141,13 +6149,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PreviewBudgetChangeMutationResult = NonNullable<Awaited<ReturnType<typeof previewBudgetChange>>>
     export type PreviewBudgetChangeMutationBody = BodyType<BudgetChangeRequest>
-    export type PreviewBudgetChangeMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>
+    export type PreviewBudgetChangeMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type PreviewBudgetChangeMutationVariables = {categoryId: string;data: BodyType<BudgetChangeRequest>}
 
     /**
  * @summary Preview a budget change and the resulting month-by-month timeline
  */
-export const usePreviewBudgetChange = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | InternalErrorResponse | ServiceUnavailableResponse>,
+export const usePreviewBudgetChange = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewBudgetChange>>, TError,PreviewBudgetChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof previewBudgetChange>>,
@@ -6204,7 +6212,7 @@ return customFetch<BudgetChangeApplyResult>(getApplyBudgetChangeUrl(categoryId),
 
 export const getApplyBudgetChangeMutationKey = () => ['applyBudgetChange'] as const;
 
-export const getApplyBudgetChangeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getApplyBudgetChangeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyBudgetChange>>, TError,ApplyBudgetChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof applyBudgetChange>>, TError,ApplyBudgetChangeMutationVariables, TContext> => {
 
@@ -6233,13 +6241,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ApplyBudgetChangeMutationResult = NonNullable<Awaited<ReturnType<typeof applyBudgetChange>>>
     export type ApplyBudgetChangeMutationBody = BodyType<ApplyBudgetChangeRequest>
-    export type ApplyBudgetChangeMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type ApplyBudgetChangeMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type ApplyBudgetChangeMutationVariables = {categoryId: string;data: BodyType<ApplyBudgetChangeRequest>}
 
     /**
  * @summary Confirm and apply a previewed budget change
  */
-export const useApplyBudgetChange = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useApplyBudgetChange = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyBudgetChange>>, TError,ApplyBudgetChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof applyBudgetChange>>,
@@ -6478,6 +6486,12 @@ export const getCreateImportUrl = () => {
  * preview or completed outcome (200) instead of a second write.
  * Archived accounts return 409 `reactivation_required`. Parsing may
  * finish after the response (`status: parsing`); poll the batch.
+ *
+ * A completed import keeps recognising its file after the stored copy is
+ * deleted. A cancelled, expired or failed attempt stops recognising it,
+ * even if some of its rows had already posted through a tracking-start
+ * extension; uploading that file again then creates a new preview and
+ * those earlier postings are offered as ordinary suspected duplicates.
  * @summary Upload a bank file into a new preview
  */
 export const createImport = async (createImportRequest: CreateImportRequest, options?: Parameters<typeof customFetch>[1]): Promise<ImportCreateResult> => {
@@ -6501,7 +6515,7 @@ formData.append(`file`, createImportRequest.file);
 
 export const getCreateImportMutationKey = () => ['createImport'] as const;
 
-export const getCreateImportMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateImportMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | UploadServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createImport>>, TError,CreateImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createImport>>, TError,CreateImportMutationVariables, TContext> => {
 
@@ -6530,13 +6544,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateImportMutationResult = NonNullable<Awaited<ReturnType<typeof createImport>>>
     export type CreateImportMutationBody = BodyType<CreateImportRequest>
-    export type CreateImportMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateImportMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | UploadServiceUnavailableResponse>
     export type CreateImportMutationVariables = {data: BodyType<CreateImportRequest>}
 
     /**
  * @summary Upload a bank file into a new preview
  */
-export const useCreateImport = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateImport = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | InternalErrorResponse | UploadServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createImport>>, TError,CreateImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createImport>>,
@@ -6786,6 +6800,13 @@ export const getUpdateImportRowUrl = (importId: string,
  * `If-Match` carries the import batch version (as for commit); the
  * response `ETag` is the new batch version. A confirmed bank-ID duplicate
  * cannot be included (409 `duplicate_source_identity`).
+ *
+ * A save that matches the current version acknowledges the changed
+ * suggestions displayed for this row, including re-saving a choice that
+ * is already visible. It does not resolve another row's issues, and it
+ * does not approve a duplicate or transfer candidate that this same edit
+ * newly discovers: that candidate is held for its own decision. An empty
+ * body is rejected.
  * @summary Save a review decision or correction for one row
  */
 export const updateImportRow = async (importId: string,
@@ -6822,7 +6843,7 @@ return customFetch<ImportRowResult>(getUpdateImportRowUrl(importId,rowId),
 
 export const getUpdateImportRowMutationKey = () => ['updateImportRow'] as const;
 
-export const getUpdateImportRowMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getUpdateImportRowMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateImportRow>>, TError,UpdateImportRowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateImportRow>>, TError,UpdateImportRowMutationVariables, TContext> => {
 
@@ -6851,13 +6872,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateImportRowMutationResult = NonNullable<Awaited<ReturnType<typeof updateImportRow>>>
     export type UpdateImportRowMutationBody = BodyType<UpdateImportRowRequest>
-    export type UpdateImportRowMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type UpdateImportRowMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type UpdateImportRowMutationVariables = {importId: string;rowId: string;data: BodyType<UpdateImportRowRequest>;headers: UpdateImportRowHeaders}
 
     /**
  * @summary Save a review decision or correction for one row
  */
-export const useUpdateImportRow = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useUpdateImportRow = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateImportRow>>, TError,UpdateImportRowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateImportRow>>,
@@ -6881,6 +6902,10 @@ export const getBulkSetImportRowTypeUrl = (importId: string,) => {
  * is incompatible with the type, and excluded rows, are skipped and
  * reported. `If-Match` carries the import batch version. Preview must be
  * open (409 `import_not_open`).
+ *
+ * For each row it updates, this acknowledges only that row's changed type
+ * suggestion. A changed duplicate or transfer suggestion on the same row
+ * still needs its own decision, and skipped rows acknowledge nothing.
  * @summary Apply one row's type choice to every row in this file with the same description
  */
 export const bulkSetImportRowType = async (importId: string,
@@ -6916,7 +6941,7 @@ return customFetch<BulkTypeResult>(getBulkSetImportRowTypeUrl(importId),
 
 export const getBulkSetImportRowTypeMutationKey = () => ['bulkSetImportRowType'] as const;
 
-export const getBulkSetImportRowTypeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getBulkSetImportRowTypeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkSetImportRowType>>, TError,BulkSetImportRowTypeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof bulkSetImportRowType>>, TError,BulkSetImportRowTypeMutationVariables, TContext> => {
 
@@ -6945,13 +6970,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type BulkSetImportRowTypeMutationResult = NonNullable<Awaited<ReturnType<typeof bulkSetImportRowType>>>
     export type BulkSetImportRowTypeMutationBody = BodyType<BulkTypeRequest>
-    export type BulkSetImportRowTypeMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type BulkSetImportRowTypeMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type BulkSetImportRowTypeMutationVariables = {importId: string;data: BodyType<BulkTypeRequest>;headers: BulkSetImportRowTypeHeaders}
 
     /**
  * @summary Apply one row's type choice to every row in this file with the same description
  */
-export const useBulkSetImportRowType = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useBulkSetImportRowType = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkSetImportRowType>>, TError,BulkSetImportRowTypeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof bulkSetImportRowType>>,
@@ -7007,7 +7032,7 @@ return customFetch<ImportBatchResult>(getRefreshImportUrl(importId),
 
 export const getRefreshImportMutationKey = () => ['refreshImport'] as const;
 
-export const getRefreshImportMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getRefreshImportMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshImport>>, TError,RefreshImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof refreshImport>>, TError,RefreshImportMutationVariables, TContext> => {
 
@@ -7036,13 +7061,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RefreshImportMutationResult = NonNullable<Awaited<ReturnType<typeof refreshImport>>>
 
-    export type RefreshImportMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type RefreshImportMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type RefreshImportMutationVariables = {importId: string;headers: RefreshImportHeaders}
 
     /**
  * @summary Recompute rule, duplicate and transfer suggestions against the current ledger
  */
-export const useRefreshImport = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useRefreshImport = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshImport>>, TError,RefreshImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof refreshImport>>,
@@ -7107,7 +7132,7 @@ return customFetch<ImportBatchResult>(getCommitImportUrl(importId),
 
 export const getCommitImportMutationKey = () => ['commitImport'] as const;
 
-export const getCommitImportMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCommitImportMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitImport>>, TError,CommitImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof commitImport>>, TError,CommitImportMutationVariables, TContext> => {
 
@@ -7136,13 +7161,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CommitImportMutationResult = NonNullable<Awaited<ReturnType<typeof commitImport>>>
 
-    export type CommitImportMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CommitImportMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CommitImportMutationVariables = {importId: string;headers: CommitImportHeaders}
 
     /**
  * @summary Confirm and post the whole batch atomically
  */
-export const useCommitImport = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCommitImport = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | GoneImportResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitImport>>, TError,CommitImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof commitImport>>,
@@ -7165,6 +7190,11 @@ export const getDiscardImportUrl = (importId: string,) => {
  * Deletes the upload and unfinished review contents; keeps only a
  * filename/date/outcome entry. Discarding a follow-up never touches the
  * original import's excluded rows.
+ *
+ * Only unfinished work is removed. Any row this preview already posted
+ * while extending the tracking start keeps its transaction and the source
+ * evidence behind it as financial history, which no longer appears here
+ * or in this import's rows (410).
  * @summary Discard an open preview
  */
 export const discardImport = async (importId: string,
@@ -7199,7 +7229,7 @@ return customFetch<ImportBatchResult>(getDiscardImportUrl(importId),
 
 export const getDiscardImportMutationKey = () => ['discardImport'] as const;
 
-export const getDiscardImportMutationOptions = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getDiscardImportMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discardImport>>, TError,DiscardImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof discardImport>>, TError,DiscardImportMutationVariables, TContext> => {
 
@@ -7228,13 +7258,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DiscardImportMutationResult = NonNullable<Awaited<ReturnType<typeof discardImport>>>
 
-    export type DiscardImportMutationError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type DiscardImportMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type DiscardImportMutationVariables = {importId: string;headers: DiscardImportHeaders}
 
     /**
  * @summary Discard an open preview
  */
-export const useDiscardImport = <TError = ErrorType<UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useDiscardImport = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discardImport>>, TError,DiscardImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof discardImport>>,
@@ -7293,7 +7323,7 @@ return customFetch<ImportCreateResult>(getCreateImportFollowUpUrl(importId),
 
 export const getCreateImportFollowUpMutationKey = () => ['createImportFollowUp'] as const;
 
-export const getCreateImportFollowUpMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getCreateImportFollowUpMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createImportFollowUp>>, TError,CreateImportFollowUpMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createImportFollowUp>>, TError,CreateImportFollowUpMutationVariables, TContext> => {
 
@@ -7322,13 +7352,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateImportFollowUpMutationResult = NonNullable<Awaited<ReturnType<typeof createImportFollowUp>>>
     export type CreateImportFollowUpMutationBody = BodyType<CreateFollowUpRequest>
-    export type CreateImportFollowUpMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type CreateImportFollowUpMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type CreateImportFollowUpMutationVariables = {importId: string;data: BodyType<CreateFollowUpRequest>}
 
     /**
  * @summary Review a completed import's excluded rows in a new linked preview
  */
-export const useCreateImportFollowUp = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useCreateImportFollowUp = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | NotFoundResponse | Problem | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createImportFollowUp>>, TError,CreateImportFollowUpMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createImportFollowUp>>,
@@ -7484,7 +7514,7 @@ return customFetch<Preferences>(getUpdatePreferencesUrl(),
 
 export const getUpdatePreferencesMutationKey = () => ['updatePreferences'] as const;
 
-export const getUpdatePreferencesMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const getUpdatePreferencesMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePreferences>>, TError,UpdatePreferencesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updatePreferences>>, TError,UpdatePreferencesMutationVariables, TContext> => {
 
@@ -7513,13 +7543,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdatePreferencesMutationResult = NonNullable<Awaited<ReturnType<typeof updatePreferences>>>
     export type UpdatePreferencesMutationBody = BodyType<UpdatePreferencesRequest>
-    export type UpdatePreferencesMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
+    export type UpdatePreferencesMutationError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>
     export type UpdatePreferencesMutationVariables = {data: BodyType<UpdatePreferencesRequest>;headers: UpdatePreferencesHeaders}
 
     /**
  * @summary Change display name or density
  */
-export const useUpdatePreferences = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PreconditionFailedResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
+export const useUpdatePreferences = <TError = ErrorType<BadRequestResponse | UnauthenticatedResponse | ForbiddenResponse | PreconditionFailedResponse | PayloadTooLargeResponse | UnsupportedMediaTypeResponse | ValidationFailedResponse | PreconditionRequiredResponse | InternalErrorResponse | ServiceUnavailableResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePreferences>>, TError,UpdatePreferencesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updatePreferences>>,

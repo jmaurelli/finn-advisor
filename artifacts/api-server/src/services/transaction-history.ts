@@ -30,6 +30,21 @@ function invalidCursor(): never {
     detail: "Reload the list from the first page." });
 }
 
+/**
+ * One assignment event as the contract describes it. Shared with the ledger
+ * export so the same event cannot read two ways.
+ */
+export function historyEventDto(row: HistoryRow) {
+  return {
+    id: row.id, transactionId: row.transaction_id, occurredAt: isoTimestamp(Number(row.occurred_at)),
+    eventType: row.event_type, source: row.source, reason: row.reason,
+    before: row.before_json === null ? null : JSON.parse(row.before_json) as unknown,
+    after: row.after_json === null ? null : JSON.parse(row.after_json) as unknown,
+    ruleId: row.rule_id, ruleRevision: row.rule_revision === null ? null : String(row.rule_revision),
+    relatedIds: JSON.parse(row.related_ids_json) as unknown,
+  };
+}
+
 export function transactionHistory(db: SqliteDatabase, id: string, query: Record<string, unknown>) {
   requireTransaction(db, id);
   const limit = query["limit"] ?? "25";
@@ -58,14 +73,7 @@ export function transactionHistory(db: SqliteDatabase, id: string, query: Record
   const page = rows.slice(0, Number(limit));
   const last = page.at(-1);
   return {
-    items: page.map(row => ({
-      id: row.id, transactionId: row.transaction_id, occurredAt: isoTimestamp(Number(row.occurred_at)),
-      eventType: row.event_type, source: row.source, reason: row.reason,
-      before: row.before_json === null ? null : JSON.parse(row.before_json) as unknown,
-      after: row.after_json === null ? null : JSON.parse(row.after_json) as unknown,
-      ruleId: row.rule_id, ruleRevision: row.rule_revision === null ? null : String(row.rule_revision),
-      relatedIds: JSON.parse(row.related_ids_json) as unknown,
-    })),
+    items: page.map(historyEventDto),
     nextCursor: !more || last === undefined ? null : Buffer.from(JSON.stringify({
       v: 1, scope, time: String(last.occurred_at), id: last.id,
     })).toString("base64url"),

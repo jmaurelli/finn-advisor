@@ -25,10 +25,18 @@ export function loadAssignmentRules(db: SqliteDatabase): AssignmentRule[] {
   return rows;
 }
 
-/** For posting and explicit rule evaluation, never for manual category edits. */
+/**
+ * For posting and explicit rule evaluation, never for manual category edits.
+ *
+ * A caller posting many rows inside one transaction may pass the rule set it
+ * already read, because the rules cannot change underneath it: the whole
+ * commit is one write transaction and nothing in it writes a rule. Reading
+ * them again per row is what made a large import cost rows x rules.
+ */
 export function assignByRules(
   db: SqliteDatabase,
   input: { accountId: string; kind: TransactionKind; merchantText: string; current?: Assignment },
+  rules?: readonly AssignmentRule[],
 ): Assignment {
   const accountId = input.accountId.toLowerCase();
   requireActiveAccount(requireAccount(db, accountId));
@@ -37,7 +45,7 @@ export function assignByRules(
     kind: input.kind,
     normalizedMerchant: normalizeMerchantText(input.merchantText),
     current: input.current,
-  }, loadAssignmentRules(db));
+  }, rules ?? loadAssignmentRules(db));
 }
 
 export function currentRuleAssignmentCount(db: SqliteDatabase, ruleId: string): bigint {

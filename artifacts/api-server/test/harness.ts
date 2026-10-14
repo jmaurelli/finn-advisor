@@ -12,6 +12,10 @@ import { TestClock } from "../src/lib/clock.js";
 import { hashPassword } from "../src/auth/passwords.js";
 import { setOwnerPassword } from "../src/cli/set-password.js";
 import { clearAllThrottles } from "../src/auth/throttle.js";
+import { createAdapterRegistry } from "../src/imports/adapters.js";
+import { SYNTHETIC_ADAPTERS } from "../src/imports/adapters-synthetic.js";
+import { createImportAdmission } from "../src/imports/admission.js";
+import { createUploadStore } from "../src/imports/upload-store.js";
 
 export const ALLOWED_ORIGIN = "http://localhost";
 export const TEST_PASSWORD = "synthetic-correct-horse-battery";
@@ -68,8 +72,11 @@ function testConfig(dataDir: string): AppConfig {
  * driven exactly instead of waited out.
  */
 export async function startTestServer(
-  options: { setPassword?: boolean } = {},
+  options: {
+    setPassword?: boolean; uploadCapacity?: number; uploadMaxBytes?: number; importJobLimit?: number;
+  } = {},
 ): Promise<TestServer> {
+  const uploadCapacity = options.uploadCapacity ?? 8;
   const dataDir = mkdtempSync(join(tmpdir(), "money-desk-api-"));
   const clock = new TestClock(START_TIME);
   let idCounter = 0;
@@ -78,6 +85,7 @@ export async function startTestServer(
   migrate(db);
 
   let deps = makeDeps(db);
+  await deps.uploads.initialize();
   let server = await listen(deps);
   let csrfToken: string | undefined;
 
@@ -88,6 +96,18 @@ export async function startTestServer(
         idCounter += 1;
         return `00000000-0000-4000-8000-${String(idCounter).padStart(12, "0")}`;
       },
+      // The service ships no verified bank format, so tests inject the
+      // fabricated ones. This is the only way they become reachable.
+      adapters: createAdapterRegistry(SYNTHETIC_ADAPTERS),
+      // A smaller byte bound lets a test reach the store's own size refusal
+      // without pushing ten megabytes through a client that shares this
+      // process's event loop with the server.
+      uploads: createUploadStore({ root: join(dataDir, "uploads"), capacity: uploadCapacity,
+        ...(options.uploadMaxBytes === undefined ? {} : { maxBytes: options.uploadMaxBytes }) }),
+      // Concurrent import jobs, lowered by the test that checks the bound so
+      // it does not have to hold several uploads open at once.
+      importJobs: createImportAdmission(
+        options.importJobLimit === undefined ? {} : { limit: options.importJobLimit }),
     });
   }
 
@@ -173,6 +193,7 @@ export async function startTestServer(
       closeLedger(db);
       db = openLedger({ dataDir });
       deps = makeDeps(db);
+      await deps.uploads.initialize();
       api.db = db;
       api.deps = deps;
       server = await listen(deps);

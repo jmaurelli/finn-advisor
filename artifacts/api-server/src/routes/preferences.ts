@@ -7,20 +7,17 @@ import { problem } from "../lib/problem.js";
 import { checkedResponse, respond, sendChecked } from "../lib/respond.js";
 import { requireAtLeastOneProperty, validateBody } from "../lib/validate.js";
 import { requireCsrf, requireSession } from "../middlewares/session.js";
-
-interface PreferencesRow {
-  display_name: string;
-  density: string;
-  version: bigint;
-}
+import {
+  preferencesDto, readPreferencesRow, type PreferencesRow,
+} from "../services/preferences.js";
 
 export function preferencesRoutes(deps: AppDependencies): IRouter {
   const router = Router();
 
   router.get("/preferences", requireSession, (_req, res) => {
-    const row = readPreferences(deps);
+    const row = readPreferencesRow(deps.db);
     res.setHeader("ETag", etag(row.version));
-    respond(res, deps.config, GetPreferencesResponse, 200, toBody(row));
+    respond(res, deps.config, GetPreferencesResponse, 200, preferencesDto(row));
   });
 
   router.patch("/preferences", requireSession, requireCsrf, (req, res) => {
@@ -31,7 +28,7 @@ export function preferencesRoutes(deps: AppDependencies): IRouter {
     const patch = validateBody(UpdatePreferencesBody, req.body);
 
     const saved = withWriteTransaction(deps.db, () => {
-      const row = readPreferences(deps);
+      const row = readPreferencesRow(deps.db);
       if (etag(row.version) !== expected) {
         throw problem({
           status: 412,
@@ -53,7 +50,7 @@ export function preferencesRoutes(deps: AppDependencies): IRouter {
         .run(next.display_name, next.density, next.version, deps.clock.now());
       return {
         version: next.version,
-        body: checkedResponse(UpdatePreferencesResponse, toBody(next as PreferencesRow)),
+        body: checkedResponse(UpdatePreferencesResponse, preferencesDto(next as PreferencesRow)),
       };
     });
 
@@ -92,22 +89,7 @@ function requiredIfMatch(req: Request): string {
   return value.trim();
 }
 
-function readPreferences(deps: AppDependencies): PreferencesRow {
-  return deps.db
-    .prepare("SELECT display_name, density, version FROM preferences WHERE id = 1")
-    .get() as PreferencesRow;
-}
 
 function etag(version: bigint): string {
   return `"${String(version)}"`;
-}
-
-function toBody(row: PreferencesRow): Record<string, unknown> {
-  return {
-    displayName: row.display_name,
-    density: row.density,
-    currency: "USD",
-    timezone: "America/New_York",
-    version: String(row.version),
-  };
 }

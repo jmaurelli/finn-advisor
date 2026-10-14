@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { withWriteTransaction } from "@workspace/db";
 import { writeBudgetConfiguration } from "../src/services/budget-plans.js";
 
+import { PROBLEM_CODES } from "../src/lib/problem.js";
 import { startTestServer, TEST_PASSWORD, type TestResponse, type TestServer } from "./harness.js";
 import { createAccount, postTransaction, postThroughService, uuid } from "./finance-harness.js";
 
@@ -60,6 +61,21 @@ function expectProblem(response: TestResponse, code: string): void {
   validateAgainst("Problem", response.body);
   expect((response.body as { code: string }).code).toBe(code);
 }
+
+describe("the service's problem codes and the contract's", () => {
+  /**
+   * The two lists are hand-maintained in different languages and are meant to
+   * be identical. Nothing else compares them: a code added to the contract
+   * alone is simply never sent, and a code added to the service alone only
+   * fails when some response happens to use it. Both are silent until the day
+   * someone is reading a response and wondering why it is not in the document.
+   */
+  it("are the same set", () => {
+    const declared = (((doc["components"] as Record<string, Record<string, { enum: string[] }>>)
+      ["schemas"]!)["ProblemCode"]!).enum;
+    expect([...PROBLEM_CODES].sort()).toEqual([...declared].sort());
+  });
+});
 
 describe("finance responses match the contract", () => {
   it("returns the complete maximum-size budget archive impact and actual changed plan", async () => {

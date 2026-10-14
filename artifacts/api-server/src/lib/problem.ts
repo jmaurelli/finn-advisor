@@ -6,45 +6,60 @@ import type { Request, Response } from "express";
  * a code, a short sentence and the request id. Never SQL, stacks, file paths
  * or the request body.
  */
-export type ProblemCode =
-  | "invalid_request"
-  | "invalid_cursor"
-  | "cursor_filter_mismatch"
-  | "not_authenticated"
-  | "session_expired"
-  | "invalid_credentials"
-  | "origin_rejected"
-  | "csrf_invalid"
-  | "not_found"
-  | "client_id_conflict"
-  | "reactivation_required"
-  | "account_in_use"
-  | "active_transactions_before_start"
-  | "category_archived"
-  | "category_protected"
-  | "category_in_use"
-  | "category_name_taken"
-  | "rule_set_changed"
-  | "rule_target_ineligible"
-  | "transfer_pair_linked"
-  | "refund_already_linked"
-  | "unlink_confirmation_required"
-  | "kind_change_confirmation_required"
-  | "kind_sign_mismatch"
-  | "preview_stale"
-  | "month_in_past"
-  | "budget_ineligible_category"
-  | "preview_expired"
-  | "scope_too_large"
-  | "version_mismatch"
-  | "precondition_required"
-  | "validation_failed"
-  | "payload_too_large"
-  | "unsupported_media_type"
-  | "login_throttled"
-  | "service_busy"
-  | "maintenance"
-  | "internal_error";
+/**
+ * Every code a problem response may carry, as a value rather than only a
+ * type, so a test can compare it with the contract's `ProblemCode` enum. The
+ * two lists are meant to be identical and nothing else enforces that: adding
+ * a code to one and not the other is a silent drift the compiler cannot see.
+ */
+export const PROBLEM_CODES = [
+  "invalid_request",
+  "invalid_cursor",
+  "cursor_filter_mismatch",
+  "not_authenticated",
+  "session_expired",
+  "invalid_credentials",
+  "origin_rejected",
+  "csrf_invalid",
+  "not_found",
+  "client_id_conflict",
+  "reactivation_required",
+  "account_in_use",
+  "active_transactions_before_start",
+  "category_archived",
+  "category_protected",
+  "category_in_use",
+  "category_name_taken",
+  "rule_set_changed",
+  "rule_target_ineligible",
+  "transfer_pair_linked",
+  "refund_already_linked",
+  "unlink_confirmation_required",
+  "kind_change_confirmation_required",
+  "kind_sign_mismatch",
+  "preview_stale",
+  "month_in_past",
+  "budget_ineligible_category",
+  "preview_expired",
+  "unsupported_file_format",
+  "import_contents_deleted",
+  "import_not_open",
+  "held_rows_unresolved",
+  "duplicate_source_identity",
+  "scope_too_large",
+  "version_mismatch",
+  "precondition_required",
+  "validation_failed",
+  "payload_too_large",
+  "unsupported_media_type",
+  "login_throttled",
+  "service_busy",
+  "storage_unavailable",
+  "maintenance",
+  "internal_error",
+] as const;
+
+export type ProblemCode = typeof PROBLEM_CODES[number];
 
 export interface FieldError {
   path: string;

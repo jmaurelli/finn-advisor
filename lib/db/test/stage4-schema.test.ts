@@ -59,7 +59,9 @@ describe("budget schema upgrade", () => {
     const before = tables.map(table => db.prepare(`SELECT * FROM ${table} ORDER BY id`).all());
     const migrations = appliedMigrations(db);
     const triggers = db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all();
-    expect(migrate(db).appliedNow).toEqual(["0004_budgets.sql"]);
+    // Bounded to four migrations: this test is about the stage 3 to 4 upgrade,
+    // not about whatever a later stage adds on top of it.
+    expect(migrate(db, migrationDir(4)).appliedNow).toEqual(["0004_budgets.sql"]);
     expect(schemaVersion(db)).toBe(4);
     expect(tables.map(table => db.prepare(`SELECT * FROM ${table} ORDER BY id`).all())).toEqual(before);
     expect(appliedMigrations(db).slice(0, 3)).toEqual(migrations);

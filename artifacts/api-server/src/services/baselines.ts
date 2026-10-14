@@ -22,6 +22,7 @@ import {
   writeAudit,
   type AccountRow,
 } from "./ledger.js";
+import { postImportRows, prepareHeldRowPosting } from "./import-posting.js";
 import type { CommandContext } from "./accounts.js";
 
 export interface BaselineChangeInput {
@@ -75,10 +76,16 @@ export function changeBaseline(
           "/trackingStartDate",
         );
       }
-      refuseHeldRows(input.heldRows);
     }
     trackingStartDate = requested;
   }
+
+  // Everything the selection depends on is checked while the account still has
+  // its old start and captured ledger revision. Applying the new start first
+  // would bump that revision and make this very preview look stale.
+  const selection = input.mode === "extend_backward" && input.heldRows != null
+    ? prepareHeldRowPosting(context, account, trackingStartDate, input.heldRows)
+    : null;
 
   const version = nextCounter(account.version);
   const ledgerRevision = nextCounter(account.ledger_revision);
@@ -97,11 +104,18 @@ export function changeBaseline(
   });
   bumpFinanceRevision(db);
 
+  // Now the new start is in place, so the canonical posting path sees these
+  // rows as covered and refuses anything that still is not.
+  const postedTransactionIds = selection === null ? []
+    : postImportRows(context, selection.batch, selection.rows, "baseline_extension", selection.scope);
+
   const updated = findAccount(db, account.id);
   if (updated === undefined) throw new Error("account disappeared during a baseline change");
-  // No held rows can be posted yet, so nothing was posted. When imports
-  // arrive this is where their ids appear.
-  return { account: updated, postedTransactionIds: [] };
+  // The rows that were not selected stay open for review. Their preview now
+  // captures an older ledger revision than the account carries, so it asks to
+  // be refreshed before it can be committed - which is how the coverage issue
+  // on any remaining early row is recomputed against the new start.
+  return { account: updated, postedTransactionIds };
 }
 
 /**
@@ -123,29 +137,6 @@ function refuseIfActiveRowsWouldBeStranded(
     title: "Transactions before the new start",
     detail: "Void these transactions first if they are wrong; nothing is dropped silently.",
     blocking: [{ kind: "transaction", count: blocking.count, ids: blocking.ids }],
-  });
-}
-
-/**
- * Extending coverage backward can post held rows from an open import preview
- * in the same transaction. Imports arrive in stage 5, so no preview can exist
- * and the only honest answer is that the referenced preview is not there.
- * Ignoring the field would report success for work that was not done.
- */
-function refuseHeldRows(heldRows: BaselineChangeInput["heldRows"]): void {
-  if (heldRows === undefined || heldRows === null) return;
-  throw problem({
-    status: 422,
-    code: "validation_failed",
-    title: "No such import preview",
-    detail: "There is no import preview to take rows from.",
-    fieldErrors: [
-      {
-        path: "/heldRows/importId",
-        code: "invalid_value",
-        message: "No import preview with that id.",
-      },
-    ],
   });
 }
 

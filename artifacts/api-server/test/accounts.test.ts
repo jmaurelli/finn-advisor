@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { startTestServer, type TestServer } from "./harness.js";
 import { createAccount, postTransaction, uuid } from "./finance-harness.js";
-import { PENDING_PLACEHOLDERS, pendingTables } from "../src/services/pending-stages.js";
+import { PENDING_PLACEHOLDERS, UNIMPLEMENTED_BEHAVIOURS, pendingTables } from "../src/services/pending-stages.js";
 
 let api: TestServer;
 
@@ -411,10 +411,48 @@ describe("the forward guard for later stages", () => {
     expect(affected).toEqual([]);
   });
 
-  it("declares a placeholder for every count the summary cannot compute yet", () => {
-    const declared = PENDING_PLACEHOLDERS.map((entry) => entry.where);
-    for (const count of ["openImportCount", "heldImportRowCount"]) {
-      expect(declared.some((where) => where.includes(count))).toBe(true);
-    }
+  it("has no storage placeholder left now that the import tables exist", () => {
+    // The counts that used to be declared here read real data; if a later
+    // change reintroduces a zero, it must declare it rather than hide it.
+    expect(PENDING_PLACEHOLDERS).toEqual([]);
+  });
+
+  it("counts open imports and held rows for real", async () => {
+    const summary = await api.request("/api/summary?month=2026-05");
+    expect(summary.status).toBe(200);
+    const review = (summary.body as { review: Record<string, number> }).review;
+    // No import exists in this fixture, so zero here is a computed zero.
+    expect(review["openImportCount"]).toBe(0);
+    expect(review["heldImportRowCount"]).toBe(0);
+    expect(
+      api.db.prepare("SELECT COUNT(*) AS n FROM import_batches").get(),
+    ).toEqual({ n: 0n });
+  });
+
+  it("declares no unimplemented behaviour, and still never drops a selection it cannot use", async () => {
+    // The last entry - posting a baseline heldRows selection - is implemented.
+    // A new gap must be declared here rather than remembered.
+    expect(UNIMPLEMENTED_BEHAVIOURS).toEqual([]);
+    const { id, etag } = await createAccount(api, { id: uuid(41), trackingStartDate: "2026-04-01" });
+    const response = await api.request(`/api/accounts/${id}/baseline`, {
+      method: "POST",
+      headers: { "if-match": etag },
+      body: {
+        mode: "extend_backward",
+        trackingStartDate: "2026-03-01",
+        openingBalance: { amountMinor: "0", currency: "USD" },
+        heldRows: {
+          importId: "40000000-0000-4000-8000-000000000006",
+          importVersion: "2",
+          rowIds: ["41000000-0000-4000-8000-000000000010"],
+        },
+      },
+    });
+    // There is no such preview, so the whole command is refused and the
+    // baseline is unchanged: the selection is never dropped and reported as a
+    // success. Posting a real selection is covered in imports-baseline.test.ts.
+    expect(response.status).toBe(422);
+    const account = await api.request(`/api/accounts/${id}`);
+    expect((account.body as { trackingStartDate: string }).trackingStartDate).not.toBe("2026-03-01");
   });
 });
